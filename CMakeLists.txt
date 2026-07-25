@@ -67,7 +67,13 @@ target_link_libraries(delaunay_test PRIVATE
     glu32
 )
 
-# Copia los shaders junto al ejecutable en cada build
+# Copia los shaders junto al ejecutable en cada build.
+# OJO: 'data/' NO se copia aca a proposito -- va a tener los 17 TIFFs
+# completos (~500MB en total) y copiarlos en cada build seria muy lento.
+# En vez de eso, configura el "Working directory" del run config en
+# CLion para que apunte a la raiz del proyecto (${CMAKE_SOURCE_DIR}),
+# asi las rutas relativas como "data/spleen_points.xyz" funcionan sin
+# copiar nada pesado.
 add_custom_command(TARGET delaunay_test POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_LIST_DIR}/shaders" "$<TARGET_FILE_DIR:delaunay_test>/shaders"

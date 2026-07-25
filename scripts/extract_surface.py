@@ -12,57 +12,16 @@ Uso:
 
 Ejemplo:
     python extract_surface.py data/spleenMasks.tiff 600 data/spleen_points.xyz
+
+Si no se pasa target_points, se calcula automaticamente segun el tamano
+de la cascara del organo (ver tiff_utils.suggested_target_points).
 """
 
 import sys
 import numpy as np
 import tifffile as tiff
-from scipy import ndimage
-from scipy.spatial import cKDTree
 
-
-def extract_shell(mask: np.ndarray) -> np.ndarray:
-    """Devuelve solo los voxeles de la CASCARA (borde) de la mascara,
-    no el volumen solido completo. Reduce muchisimo el conteo de puntos
-    antes de submuestrear."""
-    eroded = ndimage.binary_erosion(mask)
-    shell = mask & ~eroded
-    return shell
-
-
-def voxel_grid_downsample(points: np.ndarray, target_count: int) -> np.ndarray:
-    """Downsample uniforme: bins de una grilla 3D, un punto (el centroide)
-    por celda ocupada. Da mejor cobertura espacial que un sub-muestreo
-    puramente aleatorio. Ajusta el tamano de celda por busqueda binaria
-    hasta acercarse a target_count."""
-    if len(points) <= target_count:
-        return points
-
-    mins = points.min(axis=0)
-    maxs = points.max(axis=0)
-    diag = np.linalg.norm(maxs - mins)
-
-    lo, hi = diag / 500.0, diag / 2.0
-    best = points
-
-    for _ in range(25):
-        cell = (lo + hi) / 2.0
-        idx = np.floor((points - mins) / cell).astype(np.int64)
-        # hash de celda -> nos quedamos con un representante por celda
-        keys = idx[:, 0] * 1_000_000 + idx[:, 1] * 1_000 + idx[:, 2]
-        _, unique_indices = np.unique(keys, return_index=True)
-        candidate = points[unique_indices]
-
-        if len(candidate) > target_count * 1.05:
-            lo = cell  # celda muy chica -> quedan muchos puntos, agrandar
-        elif len(candidate) < target_count * 0.95:
-            hi = cell  # celda muy grande -> quedan pocos, achicar
-        else:
-            return candidate
-
-        best = candidate
-
-    return best
+from tiff_utils import extract_shell, voxel_grid_downsample, nearest_neighbor_stats, suggested_target_points
 
 
 def main():
@@ -71,7 +30,6 @@ def main():
         sys.exit(1)
 
     tiff_path = sys.argv[1]
-    target_points = int(sys.argv[2]) if len(sys.argv) > 2 else 600
     out_path = sys.argv[3] if len(sys.argv) > 3 else tiff_path.rsplit(".", 1)[0] + "_points.xyz"
 
     print(f"Leyendo {tiff_path} ...")
@@ -87,7 +45,11 @@ def main():
         print("ERROR: la mascara esta vacia, no hay nada que extraer.")
         sys.exit(1)
 
-    # Reordenar a (x, y, z) y centrar en el origen (mas comodo para la camara).
+    target_points = int(sys.argv[2]) if len(sys.argv) > 2 else suggested_target_points(len(coords))
+    if len(sys.argv) <= 2:
+        print(f"  (target_points no especificado, se calculo automaticamente: {target_points})")
+
+    # Reordenar a (x, y, z) y centrar en el origen.
     points = coords[:, [2, 1, 0]]
     centroid = points.mean(axis=0)
     points -= centroid
@@ -96,17 +58,9 @@ def main():
     points = voxel_grid_downsample(points, target_points)
     print(f"  Puntos finales: {len(points)}")
 
-    # Estadisticas de vecino mas cercano -> sugerencia de alpha para el
-    # alpha-shape (regla practica: alpha ~ 2.5x la distancia mediana al
-    # vecino mas cercano; ajustar con el slider del visor si hace falta).
-    tree = cKDTree(points)
-    dists, _ = tree.query(points, k=2)  # k=2: el mas cercano es el mismo punto
-    nn_dist = dists[:, 1]
-    median_nn = float(np.median(nn_dist))
-    mean_nn = float(np.mean(nn_dist))
-
+    median_nn, mean_nn, min_nn, max_nn = nearest_neighbor_stats(points)
     print(f"  Distancia al vecino mas cercano -> mediana: {median_nn:.4f}, "
-          f"media: {mean_nn:.4f}, min: {nn_dist.min():.4f}, max: {nn_dist.max():.4f}")
+          f"media: {mean_nn:.4f}, min: {min_nn:.4f}, max: {max_nn:.4f}")
     print(f"  Alpha sugerido (2.0x - 3.0x mediana): "
           f"{2.0 * median_nn:.3f} - {3.0 * median_nn:.3f}")
 

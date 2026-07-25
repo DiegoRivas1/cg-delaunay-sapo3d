@@ -1,0 +1,361 @@
+{
+  "organs": [
+    {
+      "organ": "blood",
+      "skipped": false,
+      "source_tiff": "bloodMasks.tiff",
+      "points_file": "blood_points.xyz",
+      "num_points": 2492,
+      "centroid_offset": [
+        229.65408104474744,
+        242.35970808526983,
+        69.63464566929134
+      ],
+      "nn_median": 2.0,
+      "nn_mean": 1.9637856936296276,
+      "nn_min": 1.0,
+      "nn_max": 15.84297951775486,
+      "alpha_auto": 5.0,
+      "alpha_range": [
+        4.0,
+        6.0
+      ]
+    },
+    {
+      "organ": "brain",
+      "skipped": false,
+      "source_tiff": "brainMasks.tiff",
+      "points_file": "brain_points.xyz",
+      "num_points": 1200,
+      "centroid_offset": [
+        385.6099739486416,
+        231.01842203200596,
+        14.050427986602159
+      ],
+      "nn_median": 1.4142135623730951,
+      "nn_mean": 1.5076182280861523,
+      "nn_min": 1.0,
+      "nn_max": 3.1622776601683795,
+      "alpha_auto": 3.5355339059327378,
+      "alpha_range": [
+        2.8284271247461903,
+        4.242640687119286
+      ]
+    },
+    {
+      "organ": "duodenum",
+      "skipped": false,
+      "source_tiff": "duodenumMasks.tiff",
+      "points_file": "duodenum_points.xyz",
+      "num_points": 1741,
+      "centroid_offset": [
+        218.99392546379906,
+        241.0394844853062,
+        68.07067804958135
+      ],
+      "nn_median": 1.4142135623730951,
+      "nn_mean": 1.6962224062550153,
+      "nn_min": 1.0,
+      "nn_max": 4.123105625617661,
+      "alpha_auto": 3.5355339059327378,
+      "alpha_range": [
+        2.8284271247461903,
+        4.242640687119286
+      ]
+    },
+    {
+      "organ": "eye",
+      "skipped": false,
+      "source_tiff": "eyeMasks.tiff",
+      "points_file": "eye_points.xyz",
+      "num_points": 1525,
+      "centroid_offset": [
+        408.32945478723406,
+        232.08266843971631,
+        16.877992021276597
+      ],
+      "nn_median": 1.4142135623730951,
+      "nn_mean": 1.6280191059534832,
+      "nn_min": 1.0,
+      "nn_max": 3.1622776601683795,
+      "alpha_auto": 3.5355339059327378,
+      "alpha_range": [
+        2.8284271247461903,
+        4.242640687119286
+      ]
+    },
+    {
+      "organ": "eyeRetna",
+      "skipped": false,
+      "source_tiff": "eyeRetnaMasks.tiff",
+      "points_file": "eyeRetna_points.xyz",
+      "num_points": 1832,
+      "centroid_offset": [
+        408.04918525193364,
+        232.6849891116618,
+        16.966584065480212
+      ],
+      "nn_median": 1.4142135623730951,
+      "nn_mean": 1.7387654519582638,
+      "nn_min": 1.0,
+      "nn_max": 4.123105625617661,
+      "alpha_auto": 3.5355339059327378,
+      "alpha_range": [
+        2.8284271247461903,
+        4.242640687119286
+      ]
+    },
+    {
+      "organ": "eyeWhite",
+      "skipped": false,
+      "source_tiff": "eyeWhiteMasks.tiff",
+      "points_file": "eyeWhite_points.xyz",
+      "num_points": 1158,
+      "centroid_offset": [
+        408.0433688286544,
+        233.95295256534365,
+        14.943465634075508
+      ],
+      "nn_median": 1.4142135623730951,
+      "nn_mean": 1.491435369597207,
+      "nn_min": 1.0,
+      "nn_max": 10.198039027185569,
+      "alpha_auto": 3.5355339059327378,
+      "alpha_range": [
+        2.8284271247461903,
+        4.242640687119286
+      ]
+    },
+    {
+      "organ": "heart",
+      "skipped": false,
+      "source_tiff": "heartMasks.tiff",
+      "points_file": "heart_points.xyz",
+      "num_points": 1561,
+      "centroid_offset": [
+        267.145467160037,
+        228.80018501387605,
+        67.1777289546716
+      ],
+      "nn_median": 1.4142135623730951,
+      "nn_mean": 1.6041965828018734,
+      "nn_min": 1.0,
+      "nn_max": 33.54101966249684,
+      "alpha_auto": 3.5355339059327378,
+      "alpha_range": [
+        2.8284271247461903,
+        4.242640687119286
+      ]
+    },
+    {
+      "organ": "ileum",
+      "skipped": false,
+      "source_tiff": "ileumMasks.tiff",
+      "points_file": "ileum_points.xyz",
+      "num_points": 1516,
+      "centroid_offset": [
+        206.76058335021267,
+        247.94044966578895,
+        63.609884545270404
+      ],
+      "nn_median": 1.4142135623730951,
+      "nn_mean": 1.6657148018620538,
+      "nn_min": 1.0,
+      "nn_max": 3.1622776601683795,
+      "alpha_auto": 3.5355339059327378,
+      "alpha_range": [
+        2.8284271247461903,
+        4.242640687119286
+      ]
+    },
+    {
+      "organ": "kidney",
+      "skipped": false,
+      "source_tiff": "kidneyMasks.tiff",
+      "points_file": "kidney_points.xyz",
+      "num_points": 1753,
+      "centroid_offset": [
+        178.7282564144602,
+        226.57619477006313,
+        49.402328059677025
+      ],
+      "nn_median": 1.4142135623730951,
+      "nn_mean": 1.7104123718787707,
+      "nn_min": 1.0,
+      "nn_max": 3.7416573867739413,
+      "alpha_auto": 3.5355339059327378,
+      "alpha_range": [
+        2.8284271247461903,
+        4.242640687119286
+      ]
+    },
+    {
+      "organ": "lIntestine",
+      "skipped": false,
+      "source_tiff": "lIntestineMasks.tiff",
+      "points_file": "lIntestine_points.xyz",
+      "num_points": 1625,
+      "centroid_offset": [
+        169.26032800498234,
+        247.07463151339007,
+        74.26479136391946
+      ],
+      "nn_median": 1.4142135623730951,
+      "nn_mean": 1.5971745738160052,
+      "nn_min": 1.0,
+      "nn_max": 3.1622776601683795,
+      "alpha_auto": 3.5355339059327378,
+      "alpha_range": [
+        2.8284271247461903,
+        4.242640687119286
+      ]
+    },
+    {
+      "organ": "liver",
+      "skipped": false,
+      "source_tiff": "liverMasks.tiff",
+      "points_file": "liver_points.xyz",
+      "num_points": 3039,
+      "centroid_offset": [
+        236.21189262182486,
+        231.55235035272753,
+        73.70808595841773
+      ],
+      "nn_median": 2.0,
+      "nn_mean": 2.1818871821090124,
+      "nn_min": 1.0,
+      "nn_max": 5.916079783099616,
+      "alpha_auto": 5.0,
+      "alpha_range": [
+        4.0,
+        6.0
+      ]
+    },
+    {
+      "organ": "lung",
+      "skipped": false,
+      "source_tiff": "lungMasks.tiff",
+      "points_file": "lung_points.xyz",
+      "num_points": 1782,
+      "centroid_offset": [
+        273.22384557153674,
+        225.7881150643452,
+        39.0224829674489
+      ],
+      "nn_median": 1.4142135623730951,
+      "nn_mean": 1.8121217220412262,
+      "nn_min": 1.0,
+      "nn_max": 3.1622776601683795,
+      "alpha_auto": 3.5355339059327378,
+      "alpha_range": [
+        2.8284271247461903,
+        4.242640687119286
+      ]
+    },
+    {
+      "organ": "muscle",
+      "skipped": false,
+      "source_tiff": "muscleMasks.tiff",
+      "points_file": "muscle_points.xyz",
+      "num_points": 2933,
+      "centroid_offset": [
+        222.09831709369695,
+        238.34344641892912,
+        74.3608057227084
+      ],
+      "nn_median": 6.928203230275509,
+      "nn_mean": 7.197643997559409,
+      "nn_min": 1.0,
+      "nn_max": 44.37341546466758,
+      "alpha_auto": 17.32050807568877,
+      "alpha_range": [
+        13.856406460551018,
+        20.784609690826528
+      ]
+    },
+    {
+      "organ": "nerve",
+      "skipped": false,
+      "source_tiff": "nerveMasks.tiff",
+      "points_file": "nerve_points.xyz",
+      "num_points": 1987,
+      "centroid_offset": [
+        241.9936933149138,
+        225.3248843774401,
+        44.26385969127275
+      ],
+      "nn_median": 1.4142135623730951,
+      "nn_mean": 1.7806784987888786,
+      "nn_min": 1.0,
+      "nn_max": 5.0,
+      "alpha_auto": 3.5355339059327378,
+      "alpha_range": [
+        2.8284271247461903,
+        4.242640687119286
+      ]
+    },
+    {
+      "organ": "skeleton",
+      "skipped": false,
+      "source_tiff": "skeletonMasks.tiff",
+      "points_file": "skeleton_points.xyz",
+      "num_points": 3015,
+      "centroid_offset": [
+        229.10966017948977,
+        236.5671372390844,
+        68.86387516386004
+      ],
+      "nn_median": 3.3166247903554,
+      "nn_mean": 3.731993052736582,
+      "nn_min": 1.0,
+      "nn_max": 11.575836902790225,
+      "alpha_auto": 8.291561975888499,
+      "alpha_range": [
+        6.6332495807108,
+        9.9498743710662
+      ]
+    },
+    {
+      "organ": "spleen",
+      "skipped": false,
+      "source_tiff": "spleenMasks.tiff",
+      "points_file": "spleen_points.xyz",
+      "num_points": 574,
+      "centroid_offset": [
+        198.19783393501805,
+        213.30685920577616,
+        54.706859205776176
+      ],
+      "nn_median": 1.0,
+      "nn_mean": 1.1861303487962918,
+      "nn_min": 1.0,
+      "nn_max": 17.291616465790582,
+      "alpha_auto": 2.5,
+      "alpha_range": [
+        2.0,
+        3.0
+      ]
+    },
+    {
+      "organ": "stomach",
+      "skipped": false,
+      "source_tiff": "stomachMasks.tiff",
+      "points_file": "stomach_points.xyz",
+      "num_points": 2975,
+      "centroid_offset": [
+        226.05573799591727,
+        219.3851217419603,
+        65.0238898257448
+      ],
+      "nn_median": 2.23606797749979,
+      "nn_mean": 2.509222049471845,
+      "nn_min": 1.0,
+      "nn_max": 10.816653826391969,
+      "alpha_auto": 5.5901699437494745,
+      "alpha_range": [
+        4.47213595499958,
+        6.708203932499369
+      ]
+    }
+  ]
+}
