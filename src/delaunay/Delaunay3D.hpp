@@ -41,6 +41,13 @@ public:
     // envolvente convexa de la nube de puntos.
     static std::vector<Face> boundaryFaces(const std::vector<Tetrahedron>& tets);
 
+    // Alpha-shape: descarta los tetraedros cuya circunesfera sea mayor
+    // a 'alphaRadius'. Necesario para reconstruir formas NO convexas
+    // (organos con concavidades) -- boundaryFaces() sola solo da el
+    // casco convexo, que no sirve para eso.
+    static std::vector<Tetrahedron> filterByAlpha(const std::vector<Tetrahedron>& tets,
+                                                    double alphaRadius);
+
 private:
     static bool computeCircumsphere(const Vec3& a, const Vec3& b,
                                      const Vec3& c, const Vec3& d,

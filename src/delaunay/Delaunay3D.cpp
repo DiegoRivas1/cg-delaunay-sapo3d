@@ -175,6 +175,17 @@ std::vector<Tetrahedron> BowyerWatson3D::triangulate(const std::vector<Vec3>& po
     return result;
 }
 
+std::vector<Tetrahedron> BowyerWatson3D::filterByAlpha(const std::vector<Tetrahedron>& tets,
+                                                         double alphaRadius) {
+    double alphaSq = alphaRadius * alphaRadius;
+    std::vector<Tetrahedron> result;
+    result.reserve(tets.size());
+    for (const auto& t : tets) {
+        if (t.radiusSq <= alphaSq) result.push_back(t);
+    }
+    return result;
+}
+
 std::vector<Face> BowyerWatson3D::boundaryFaces(const std::vector<Tetrahedron>& tets) {
     std::vector<Face> allFaces;
     allFaces.reserve(tets.size() * 4);
