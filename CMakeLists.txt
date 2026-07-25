@@ -24,6 +24,7 @@ find_package(glm CONFIG REQUIRED)
 add_library(delaunay_core STATIC
     src/delaunay/Delaunay3D.cpp
     src/delaunay/PointCloudIO.cpp
+    src/delaunay/ManifestIO.cpp
 )
 target_include_directories(delaunay_core PUBLIC src)
 
@@ -36,13 +37,15 @@ add_executable(delaunay_core_test tests/test_main.cpp)
 target_link_libraries(delaunay_core_test PRIVATE delaunay_core)
 
 # ------------------------------------------------------------------
-# Ejecutable: test sintetico (esfera / cubo aleatorio -> valida el
-# algoritmo con render OpenGL + ImGui)
+# Capa grafica compartida (ventana, shaders, camara, construccion de
+# mallas GPU, GLAD, ImGui). Se compila UNA sola vez y la reusan todos
+# los ejecutables graficos (delaunay_test, sapo3d) -- evita recompilar
+# ImGui/GLAD por cada uno.
 # ------------------------------------------------------------------
-add_executable(delaunay_test
-    apps/synthetic_test/main.cpp
+add_library(app_gfx_core STATIC
     src/core/Application.cpp
     src/core/Shader.cpp
+    src/core/MeshBuilder.cpp
     ${GLAD_DIR}/src/glad.c
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
@@ -52,13 +55,13 @@ add_executable(delaunay_test
     ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
-target_include_directories(delaunay_test PRIVATE
+target_include_directories(app_gfx_core PUBLIC
     ${GLAD_DIR}/include
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
     src
 )
-target_link_libraries(delaunay_test PRIVATE
+target_link_libraries(app_gfx_core PUBLIC
     delaunay_core
     glm::glm
     glfw3
@@ -67,35 +70,27 @@ target_link_libraries(delaunay_test PRIVATE
     glu32
 )
 
-# Copia los shaders junto al ejecutable en cada build.
-# OJO: 'data/' NO se copia aca a proposito -- va a tener los 17 TIFFs
-# completos (~500MB en total) y copiarlos en cada build seria muy lento.
-# En vez de eso, configura el "Working directory" del run config en
-# CLion para que apunte a la raiz del proyecto (${CMAKE_SOURCE_DIR}),
-# asi las rutas relativas como "data/spleen_points.xyz" funcionan sin
-# copiar nada pesado.
+# ------------------------------------------------------------------
+# Ejecutable: test sintetico (esfera / cubo aleatorio / toro / .xyz
+# cargado a mano -> valida el algoritmo con render OpenGL + ImGui)
+# ------------------------------------------------------------------
+add_executable(delaunay_test apps/synthetic_test/main.cpp)
+target_link_libraries(delaunay_test PRIVATE app_gfx_core)
+
 add_custom_command(TARGET delaunay_test POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_LIST_DIR}/shaders" "$<TARGET_FILE_DIR:delaunay_test>/shaders"
 )
 
 # ------------------------------------------------------------------
-# Placeholder: ejecutable del sapo (Unidad 4). Mismo patron que
-# delaunay_test, se agrega despues de validar la extraccion de
-# superficie desde los TIFF.
+# Ejecutable: reconstruccion del sapo completo. Lee data/manifest.tsv
+# (generado por scripts/extract_all.py) y muestra un selector de
+# organos en ImGui.
 # ------------------------------------------------------------------
-# add_executable(sapo3d
-#     apps/sapo3d/main.cpp
-#     src/core/Application.cpp
-#     src/core/Shader.cpp
-#     ${GLAD_DIR}/src/glad.c
-#     ${IMGUI_DIR}/imgui.cpp
-#     ${IMGUI_DIR}/imgui_draw.cpp
-#     ${IMGUI_DIR}/imgui_tables.cpp
-#     ${IMGUI_DIR}/imgui_widgets.cpp
-#     ${IMGUI_DIR}/imgui_demo.cpp
-#     ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
-#     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
-# )
-# target_include_directories(sapo3d PRIVATE ${GLAD_DIR}/include ${IMGUI_DIR} ${IMGUI_DIR}/backends src)
-# target_link_libraries(sapo3d PRIVATE delaunay_core glm::glm glfw3 opengl32 gdi32 glu32)
+add_executable(sapo3d apps/sapo3d/main.cpp)
+target_link_libraries(sapo3d PRIVATE app_gfx_core)
+
+add_custom_command(TARGET sapo3d POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_LIST_DIR}/shaders" "$<TARGET_FILE_DIR:sapo3d>/shaders"
+)

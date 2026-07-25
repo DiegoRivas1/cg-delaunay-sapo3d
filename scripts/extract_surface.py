@@ -51,8 +51,13 @@ def main():
 
     # Reordenar a (x, y, z) y centrar en el origen.
     points = coords[:, [2, 1, 0]]
-    centroid = points.mean(axis=0)
-    points -= centroid
+    # IMPORTANTE: centrar respecto al centro del VOLUMEN completo, no al
+    # centroide de este organo -- todos los organos comparten el mismo
+    # shape de TIFF, asi que este offset es igual para los 17 y preserva
+    # la posicion relativa entre ellos (necesario para combinarlos despues
+    # en el sapo completo).
+    volume_center = np.array([mask.shape[2], mask.shape[1], mask.shape[0]], dtype=np.float64) / 2.0
+    points -= volume_center
 
     print(f"Submuestreando a ~{target_points} puntos ...")
     points = voxel_grid_downsample(points, target_points)

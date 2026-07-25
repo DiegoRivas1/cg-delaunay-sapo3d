@@ -49,8 +49,10 @@ def process_one(tiff_path: str, out_dir: str) -> dict:
 
     target_points = suggested_target_points(len(coords))
     points = coords[:, [2, 1, 0]]
-    centroid = points.mean(axis=0)
-    points -= centroid
+    # Mismo offset compartido para los 17 organos (ver comentario en
+    # extract_surface.py) -- preserva la posicion relativa entre organos.
+    volume_center = np.array([mask.shape[2], mask.shape[1], mask.shape[0]], dtype=np.float64) / 2.0
+    points -= volume_center
     points = voxel_grid_downsample(points, target_points)
     print(f"  Puntos finales: {len(points)} (target: {target_points})")
 
@@ -70,7 +72,7 @@ def process_one(tiff_path: str, out_dir: str) -> dict:
         "source_tiff": os.path.basename(tiff_path),
         "points_file": os.path.basename(out_file),
         "num_points": int(len(points)),
-        "centroid_offset": centroid.tolist(),
+        "volume_center_offset": volume_center.tolist(),
         "nn_median": median_nn,
         "nn_mean": mean_nn,
         "nn_min": min_nn,
@@ -105,8 +107,18 @@ def main():
     with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=2)
 
+    # Version .tsv (texto plano) para consumir desde C++ sin libreria JSON.
+    tsv_path = os.path.join(out_dir, "manifest.tsv")
+    with open(tsv_path, "w") as f:
+        f.write("# organ\tpoints_file\tnum_points\talpha_auto\talpha_low\talpha_high\n")
+        for e in manifest["organs"]:
+            if e.get("skipped"):
+                continue
+            f.write(f"{e['organ']}\t{e['points_file']}\t{e['num_points']}\t"
+                     f"{e['alpha_auto']:.4f}\t{e['alpha_range'][0]:.4f}\t{e['alpha_range'][1]:.4f}\n")
+
     ok = sum(1 for e in manifest["organs"] if not e.get("skipped"))
-    print(f"\n=== Listo: {ok}/{len(files)} organos procesados. Manifest: {manifest_path} ===")
+    print(f"\n=== Listo: {ok}/{len(files)} organos procesados. Manifest: {manifest_path} y {tsv_path} ===")
 
 
 if __name__ == "__main__":
