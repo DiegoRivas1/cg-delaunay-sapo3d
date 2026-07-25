@@ -1,0 +1,18 @@
+# organ	points_file	num_points	alpha_auto	alpha_low	alpha_high
+blood	blood_points.xyz	2492	5.0000	4.0000	6.0000
+brain	brain_points.xyz	1200	3.5355	2.8284	4.2426
+duodenum	duodenum_points.xyz	1741	3.5355	2.8284	4.2426
+eye	eye_points.xyz	1525	3.5355	2.8284	4.2426
+eyeRetna	eyeRetna_points.xyz	1832	3.5355	2.8284	4.2426
+eyeWhite	eyeWhite_points.xyz	1158	3.5355	2.8284	4.2426
+heart	heart_points.xyz	1561	3.5355	2.8284	4.2426
+ileum	ileum_points.xyz	1516	3.5355	2.8284	4.2426
+kidney	kidney_points.xyz	1753	3.5355	2.8284	4.2426
+lIntestine	lIntestine_points.xyz	1625	3.5355	2.8284	4.2426
+liver	liver_points.xyz	3039	5.0000	4.0000	6.0000
+lung	lung_points.xyz	1782	3.5355	2.8284	4.2426
+muscle	muscle_points.xyz	2933	17.3205	13.8564	20.7846
+nerve	nerve_points.xyz	1987	3.5355	2.8284	4.2426
+skeleton	skeleton_points.xyz	3015	8.2916	6.6332	9.9499
+spleen	spleen_points.xyz	574	2.5000	2.0000	3.0000
+stomach	stomach_points.xyz	2975	5.5902	4.4721	6.7082
