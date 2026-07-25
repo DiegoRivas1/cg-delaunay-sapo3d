@@ -23,6 +23,7 @@ find_package(glm CONFIG REQUIRED)
 # ------------------------------------------------------------------
 add_library(delaunay_core STATIC
     src/delaunay/Delaunay3D.cpp
+    src/delaunay/PointCloudIO.cpp
 )
 target_include_directories(delaunay_core PUBLIC src)
 
