@@ -25,6 +25,7 @@ add_library(delaunay_core STATIC
     src/delaunay/Delaunay3D.cpp
     src/delaunay/PointCloudIO.cpp
     src/delaunay/ManifestIO.cpp
+    src/delaunay/TetraCache.cpp
 )
 target_include_directories(delaunay_core PUBLIC src)
 
@@ -93,4 +94,19 @@ target_link_libraries(sapo3d PRIVATE app_gfx_core)
 add_custom_command(TARGET sapo3d POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_LIST_DIR}/shaders" "$<TARGET_FILE_DIR:sapo3d>/shaders"
+)
+
+# ------------------------------------------------------------------
+# Ejecutable: reconstruccion del sapo con CACHE binario. Primera vez
+# que se activa un organo, triangula y guarda el resultado en
+# data/cache/<organo>_<numPuntos>.bin; las siguientes veces (incluso
+# en otra corrida del programa) lo carga directo del cache, sin volver
+# a correr Bowyer-Watson. Incluye edicion de colores por organo.
+# ------------------------------------------------------------------
+add_executable(sapo3d_hd apps/sapo3d_hd/main.cpp)
+target_link_libraries(sapo3d_hd PRIVATE app_gfx_core)
+
+add_custom_command(TARGET sapo3d_hd POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_LIST_DIR}/shaders" "$<TARGET_FILE_DIR:sapo3d_hd>/shaders"
 )

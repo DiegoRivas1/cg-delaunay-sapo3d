@@ -1,6 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <algorithm>
 
 // Camara orbital: rota alrededor de un target fijo (el centro del modelo).
 class Camera {
@@ -20,9 +21,13 @@ public:
     }
 
     void zoom(float scrollY) {
-        distance -= scrollY * 1.0f;
-        if (distance < 1.0f) distance = 1.0f;
-        if (distance > 200.0f) distance = 200.0f;
+        // Velocidad proporcional a la distancia actual: paso fino de cerca,
+        // paso grande de lejos (si no, alejarse del sapo completo a paso
+        // fijo de 1.0 requeriria cientos de scrolls).
+        float speed = std::max(0.5f, distance * 0.1f);
+        distance -= scrollY * speed;
+        if (distance < 0.5f) distance = 0.5f;
+        if (distance > 3000.0f) distance = 3000.0f;
     }
 
     glm::vec3 position() const {
@@ -40,6 +45,6 @@ public:
     }
 
     glm::mat4 projectionMatrix(float aspect) const {
-        return glm::perspective(glm::radians(fovDeg), aspect, 0.1f, 500.0f);
+        return glm::perspective(glm::radians(fovDeg), aspect, 0.1f, 5000.0f);
     }
 };

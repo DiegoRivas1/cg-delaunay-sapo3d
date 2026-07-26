@@ -257,20 +257,20 @@
       "skipped": false,
       "source_tiff": "muscleMasks.tiff",
       "points_file": "muscle_points.xyz",
-      "num_points": 2933,
+      "num_points": 14935,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 6.928203230275509,
-      "nn_mean": 7.197643997559409,
+      "nn_median": 3.3166247903554,
+      "nn_mean": 3.6981824463575785,
       "nn_min": 1.0,
       "nn_max": 44.37341546466758,
-      "alpha_auto": 17.32050807568877,
+      "alpha_auto": 8.291561975888499,
       "alpha_range": [
-        13.856406460551018,
-        20.784609690826528
+        6.6332495807108,
+        9.9498743710662
       ]
     },
     {

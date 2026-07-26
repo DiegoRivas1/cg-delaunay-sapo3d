@@ -1,6 +1,7 @@
 #include "Delaunay3D.hpp"
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 
 namespace {
 
@@ -186,20 +187,35 @@ std::vector<Tetrahedron> BowyerWatson3D::filterByAlpha(const std::vector<Tetrahe
     return result;
 }
 
+namespace {
+// Hash simple (FNV-1a) sobre los 3 indices ya ordenados canonicamente
+// dentro de Face -- permite usar unordered_map en vez de comparar cada
+// cara contra todas las demas.
+struct FaceHash {
+    size_t operator()(const Face& f) const {
+        size_t h = 1469598103934665603ull;
+        for (int v : f.v) {
+            h ^= static_cast<size_t>(v);
+            h *= 1099511628211ull;
+        }
+        return h;
+    }
+};
+}  // namespace
+
 std::vector<Face> BowyerWatson3D::boundaryFaces(const std::vector<Tetrahedron>& tets) {
-    std::vector<Face> allFaces;
-    allFaces.reserve(tets.size() * 4);
+    std::unordered_map<Face, int, FaceHash> faceCount;
+    faceCount.reserve(tets.size() * 4);
     for (const auto& t : tets) {
-        for (const auto& f : facesOf(t)) allFaces.push_back(f);
+        for (const auto& f : facesOf(t)) {
+            faceCount[f]++;
+        }
     }
 
     std::vector<Face> boundary;
-    for (size_t a = 0; a < allFaces.size(); ++a) {
-        int count = 0;
-        for (size_t b = 0; b < allFaces.size(); ++b) {
-            if (allFaces[a] == allFaces[b]) count++;
-        }
-        if (count == 1) boundary.push_back(allFaces[a]);
+    boundary.reserve(faceCount.size());
+    for (const auto& [f, count] : faceCount) {
+        if (count == 1) boundary.push_back(f);
     }
     return boundary;
 }

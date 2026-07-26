@@ -142,9 +142,8 @@ int main() {
             for (auto& o : organs) {
                 ImGui::PushID(o.entry.name.c_str());
 
-                ImGui::ColorButton(("##color_" + o.entry.name).c_str(),
-                                    ImVec4(o.color.r, o.color.g, o.color.b, 1.0f),
-                                    ImGuiColorEditFlags_NoTooltip, ImVec2(14, 14));
+                ImGui::ColorEdit3("##color", &o.color.x,
+                                   ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
                 ImGui::SameLine();
 
                 bool wasVisible = o.visible;

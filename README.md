@@ -4,7 +4,6 @@ Reconstruccion 3D de organos de rana a partir de mascaras TIFF, usando
 triangulacion de Delaunay (algoritmo Bowyer-Watson en 3D / tetraedros)
 mas un filtrado alpha-shape para reconstruir superficies no convexas.
 
-
 ## Indice
 
 - [Que se implemento](#que-se-implemento)
@@ -44,6 +43,7 @@ src/delaunay/       Nucleo del algoritmo, SIN dependencias graficas:
   IDelaunayStrategy.hpp Strategy pattern sobre el algoritmo
   PointCloudIO.hpp/cpp  lector de nubes de puntos .xyz
   ManifestIO.hpp/cpp    lector de data/manifest.tsv
+  TetraCache.hpp/cpp    cache binario de triangulaciones ya calculadas
 
 src/core/           Capa grafica reutilizable:
   Application.h/cpp    ventana GLFW + contexto ImGui + loop principal
@@ -53,16 +53,18 @@ src/core/           Capa grafica reutilizable:
 
 apps/
   synthetic_test/main.cpp   validacion con esfera / cubo / toro / archivo .xyz
-  sapo3d/main.cpp            reconstruccion completa, selector de organos
+  sapo3d/main.cpp            reconstruccion completa, re-triangula cada corrida
+  sapo3d_hd/main.cpp         igual, pero con cache binario (instantaneo la 2da vez)
 
 tests/
   test_main.cpp        validacion de consola (sin OpenGL), exporta .obj
 
 scripts/
-  tiff_utils.py          funciones compartidas de extraccion
-  extract_surface.py     extrae UN organo (target_points manual u automatico)
-  extract_all.py         extrae los 17 y genera manifest.json / manifest.tsv
-  report_voxel_counts.py conteo de voxeles originales, solo referencia
+  tiff_utils.py          funciones compartidas de extraccion (cascara, downsample, NN stats)
+  manifest_utils.py      lectura/escritura del manifest, compartido entre los dos scripts de abajo
+  extract_surface.py     extrae UN organo (target_points manual u automatico), actualiza el manifest
+  extract_all.py         extrae los 17 de una, reescribe el manifest completo
+  report_voxel_counts.py conteo de voxeles originales, solo referencia (no genera nada)
 
 shaders/                GLSL (basic.vert/frag = superficie con Phong, line.vert/frag = aristas)
 external/glad/           [no versionado tal cual, ver Setup]
@@ -74,8 +76,8 @@ data/                    TIFFs + .xyz generados + manifest (no versionado, pesa 
 
 Toolchain: Windows + MSYS2 UCRT64 + CLion (mismo patron que `cg_oceano_dinamico`).
 
-1. Copia `external/glad` y `external/imgui-1.92.8` , en este caso ya lo tenemos
-.
+1. Copia `external/glad` y `external/imgui-1.92.8` desde tu proyecto
+   `cg_oceano_dinamico` (o donde los tengas ya andando).
 2. Instala dependencias via pacman si no las tenes:
    ```
    pacman -S mingw-w64-ucrt-x86_64-glfw mingw-w64-ucrt-x86_64-glm
@@ -101,10 +103,28 @@ wireframe de tetraedros, y boton de validacion en vivo.
 
 ### `sapo3d`
 Reconstruccion completa. Lee `data/manifest.tsv`, muestra un checklist
-de los 17 organos (color distinto por cada uno via rueda HSV), carga
-perezosa (cada organo se triangula recien la primera vez que lo activas
-toma un punado de milisegundos por organo en la practica), slider de
-alpha global con boton "Aplicar" que re-filtra sin re-triangular.
+de los 17 organos con color editable por cada uno (clic en el swatch
+abre el picker), carga perezosa en RAM (cada organo se triangula recien
+la primera vez que lo activas dentro de esa corrida), slider de alpha
+global con boton "Aplicar" que re-filtra sin re-triangular. Vuelve a
+triangular todo desde cero cada vez que abris el programa.
+
+### `sapo3d_hd`
+Igual a `sapo3d`, pero con **cache binario en disco**
+(`data/cache/<organo>_<numPuntos>.bin`): la primera vez que un organo se
+triangula, el resultado (puntos + tetraedros, con su circunesfera ya
+calculada) se guarda en ese archivo. En corridas siguientes del
+programa -- aunque hayas cerrado y vuelto a abrir -- se carga directo
+del cache en vez de re-correr Bowyer-Watson. Boton "Precompilar todos"
+para generar el cache de los 17 sin necesidad de activarlos uno por uno
+en pantalla. El checklist marca `[cache]` en los organos que se
+cargaron del cache en vez de triangularse en esa corrida.
+
+Si cambias `target_points` de un organo (re-corriendo
+`extract_surface.py` con otro valor), el nombre de archivo del cache
+cambia solo (incluye la cantidad de puntos), asi que no hay que borrar
+nada a mano -- simplemente no va a existir cache para el nuevo conteo
+todavia, y se genera la primera vez que lo actives.
 
 ## Pipeline de datos (TIFF -> nube de puntos)
 
@@ -116,7 +136,7 @@ alpha global con boton "Aplicar" que re-filtra sin re-triangular.
    puramente aleatorio.
 3. **Centrado compartido**: todos los organos se centran respecto al
    mismo punto de referencia (el centro del volumen completo del TIFF,
-   igual para los 17 archivos), no cada uno por su cuenta asi se
+   igual para los 17 archivos), no cada uno por su cuenta, asi se
    preserva la posicion relativa entre organos al combinarlos en
    `sapo3d`.
 4. Estadistica de vecino mas cercano -> alpha sugerido (`2.0x`-`3.0x` la
@@ -124,9 +144,14 @@ alpha global con boton "Aplicar" que re-filtra sin re-triangular.
 
 `extract_all.py` hace esto para los 17 de una y calcula un target de
 puntos por organo escalado segun el tamano de su cascara (calibrado con
-el caso del bazo). Si en algun organo puntual necesitariamos mas detalle,
+el caso del bazo). Si en algun organo puntual queres mas detalle,
 `extract_surface.py <tiff> <target_points> <salida.xyz>` deja
-especificarlo a mano.
+especificarlo a mano y actualiza solo la entrada de ESE organo en
+`manifest.json`/`manifest.tsv` (via `manifest_utils.py`), sin pisar los
+otros 16. Importante: si le subis los puntos a un organo despues de
+haber generado su cache en `sapo3d_hd`, el nombre del `.bin` cambia
+automaticamente (incluye la cantidad de puntos), asi que no hace falta
+borrar nada el cache viejo simplemente queda sin usarse.
 
 ## Resultados de validacion
 
@@ -157,7 +182,7 @@ Corridas reales de `delaunay_core_test` (ver `tests/test_main.cpp`):
 El caso del toro es la prueba clave: para una superficie de genero 1
 (con un agujero), la caracteristica de Euler predice `F = 2V` caras en
 una triangulacion cerrada. Con 288 puntos eso son 576 caras esperadas,
-y `alpha=2.5` las reproduce exactas, confirma que el alpha-shape
+y `alpha=2.5` las reproduce exactas confirma que el alpha-shape
 reconstruye la topologia real (agujero incluido), no solo el casco
 convexo.
 
@@ -192,7 +217,7 @@ via `report_voxel_counts.py`:
 | **TOTAL** | **5,309,271** | **1,273,857** | **32,708** | -- |
 
 `muscle` y `skeleton` son los que mas comprimen (822K y 198K voxeles de
-cascara, bajados al mismo tope de 3000 puntos que todos) ver
+cascara, bajados al mismo tope de 3000 puntos que todos) -- ver
 limitaciones.
 
 ## Limitaciones y dificultades
@@ -221,7 +246,7 @@ limitaciones.
   optimizar esa busqueda.
 - **Formato TIFF asumido**: se asume que todas las mascaras comparten
   el mismo shape de volumen (voxeles isotropicos, sin espaciado
-  distinto por eje), valido para este dataset puntual, pero no es un
+  distinto por eje) valido para este dataset puntual, pero no es un
   supuesto general para cualquier dataset medico.
 
 ## Capturas
@@ -238,3 +263,7 @@ PNG para las estaticas)*
   ajuste del slider de alpha en vivo.
 - `docs/organ_selector.gif` -- checklist de organos en `sapo3d`
   prendiendose uno por uno.
+- `docs/sapo3d_hd_cache.gif` -- corto mostrando `sapo3d_hd`: primera
+  activacion de un organo (tarda, triangula), cerrar y volver a abrir
+  el programa, activar el mismo organo de nuevo (instantaneo, se ve el
+  tag `[cache]`), y edicion de color en vivo con el picker.
