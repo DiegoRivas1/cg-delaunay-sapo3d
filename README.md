@@ -4,6 +4,7 @@ Reconstruccion 3D de organos de rana a partir de mascaras TIFF, usando
 triangulacion de Delaunay (algoritmo Bowyer-Watson en 3D / tetraedros)
 mas un filtrado alpha-shape para reconstruir superficies no convexas.
 
+
 ## Indice
 
 - [Que se implemento](#que-se-implemento)
@@ -12,6 +13,7 @@ mas un filtrado alpha-shape para reconstruir superficies no convexas.
 - [Ejecutables](#ejecutables)
 - [Pipeline de datos (TIFF -> nube de puntos)](#pipeline-de-datos-tiff---nube-de-puntos)
 - [Resultados de validacion](#resultados-de-validacion)
+- [Complejidad y optimizaciones](#complejidad-y-optimizaciones)
 - [Los 17 organos](#los-17-organos)
 - [Limitaciones y dificultades](#limitaciones-y-dificultades)
 - [Capturas](#capturas)
@@ -76,8 +78,7 @@ data/                    TIFFs + .xyz generados + manifest (no versionado, pesa 
 
 Toolchain: Windows + MSYS2 UCRT64 + CLion (mismo patron que `cg_oceano_dinamico`).
 
-1. Copia `external/glad` y `external/imgui-1.92.8` desde tu proyecto
-   `cg_oceano_dinamico` (o donde los tengas ya andando).
+1. Copia `external/glad` y `external/imgui-1.92.8` en este caso ya lo tenemos en el proyecto.
 2. Instala dependencias via pacman si no las tenes:
    ```
    pacman -S mingw-w64-ucrt-x86_64-glfw mingw-w64-ucrt-x86_64-glm
@@ -114,7 +115,7 @@ Igual a `sapo3d`, pero con **cache binario en disco**
 (`data/cache/<organo>_<numPuntos>.bin`): la primera vez que un organo se
 triangula, el resultado (puntos + tetraedros, con su circunesfera ya
 calculada) se guarda en ese archivo. En corridas siguientes del
-programa -- aunque hayas cerrado y vuelto a abrir -- se carga directo
+programa, aunque hayas cerrado y vuelto a abrir, se carga directo
 del cache en vez de re-correr Bowyer-Watson. Boton "Precompilar todos"
 para generar el cache de los 17 sin necesidad de activarlos uno por uno
 en pantalla. El checklist marca `[cache]` en los organos que se
@@ -153,6 +154,41 @@ haber generado su cache en `sapo3d_hd`, el nombre del `.bin` cambia
 automaticamente (incluye la cantidad de puntos), asi que no hace falta
 borrar nada el cache viejo simplemente queda sin usarse.
 
+### Ejecucion de los scripts
+
+Todos se corren desde la raiz del repo, con Python 3 + `pip install
+tifffile numpy scipy`.
+
+```bash
+# Los 17 organos de una, con el target de puntos automatico por organo
+python scripts/extract_all.py data data
+
+# Un organo puntual, con un target de puntos manual (ej. mas detalle
+# para un organo grande/complejo)
+python scripts/extract_surface.py data/liverMasks.tiff 5000 data/liver_points.xyz
+
+# Solo referencia: conteo de voxeles ORIGINALES (activos y de cascara)
+# por organo, sin generar nada -- util para saber el techo real de
+# detalle disponible antes de subir target_points
+python scripts/report_voxel_counts.py data
+```
+
+Para el informe, se corrio `extract_surface.py` una vez por organo
+usando como `target_points` el maximo razonable (el conteo de voxeles
+de su propia cascara, sin comprimir nada), por ejemplo:
+
+```bash
+python scripts/extract_surface.py data/spleenMasks.tiff 1385 data/spleen_points_max.xyz
+python scripts/extract_surface.py data/liverMasks.tiff 42951 data/liver_points_max.xyz
+python scripts/extract_surface.py data/muscleMasks.tiff 822268 data/muscle_points_max.xyz
+```
+
+Estos `_max.xyz` (y sus caches `.bin` correspondientes, que en el caso
+de `muscle`/`skeleton` pesan varios cientos de MB) **no se versionan** son solo para comparar detalle/tiempos de forma puntual, no para el
+uso normal de `sapo3d`/`sapo3d_hd` (que ya vienen calibrados con un
+tope de ~3000 puntos, pensado para no romper el repositorio de GitHub
+con archivos pesados).
+
 ## Resultados de validacion
 
 Corridas reales de `delaunay_core_test` (ver `tests/test_main.cpp`):
@@ -190,6 +226,59 @@ Validado tambien con datos reales: bazo (574 puntos, alpha~2.5) e
 higado (3039 puntos, alpha~9.6) reconstruyen formas reconocibles con
 huecos menores en zonas de baja densidad de puntos.
 
+## Complejidad y optimizaciones
+
+**Bowyer-Watson (insercion incremental):** por cada uno de los `n`
+puntos, se recorren los tetraedros existentes (hasta `O(n)` en el peor
+caso) para clasificarlos como validos/invalidos via su circunesfera
+eso da una cota de **`O(n^2)`** en el peor caso para el algoritmo
+completo (sin estructuras aceleradoras tipo *walk* o *kd-tree*, que no
+se implementaron por alcance del laboratorio). En la practica, para las
+nubes de unos pocos miles de puntos que usamos aca, esto corre en
+fracciones de segundo (ver tabla de tiempos abajo).
+
+**`boundaryFaces()` (extraccion de superficie):** cada tetraedro aporta
+4 caras; una cara es de frontera si aparece en un solo tetraedro. La
+primera implementacion comparaba cada cara contra todas las demas
+(`O(caras^2)`); se optimizo a un `unordered_map` con hash sobre los 3
+indices ordenados de cada cara, bajando a **`O(caras)`** amortizado.
+Impacto medido (3000 puntos, 19511 tetraedros, 78044 caras):
+
+| Version | Tiempo `boundaryFaces()` |
+|---|---|
+| `O(caras^2)`, comparacion por pares | 2.20 s |
+| `O(caras)`, hash map | 0.005 s |
+
+**OpenMP:** la clasificacion de tetraedros dentro de cada insercion
+(el paso `O(n)` que domina el costo total) es paralelizable, cada
+tetraedro se evalua de forma independiente contra el punto que se esta
+insertando, sin dependencias entre ellos. Se agrego un
+`#pragma omp parallel for` sobre ese loop (activado solo cuando hay
+mas de 500 tetraedros, para no pagar el overhead de crear hilos en
+nubes chicas). Compila y corre igual sin OpenMP instalado si no esta
+disponible, CMake avisa y el codigo sigue siendo 100% funcional,
+simplemente secuencial.
+
+*(pendiente: benchmark en una maquina multi-nucleo real el entorno
+donde se desarrollo este pipeline solo tenia 1 nucleo disponible, asi
+que no se pudo medir la mejora real de OpenMP ahi. Completar esta tabla
+en el informe con los tiempos de tu maquina.)*
+
+| Puntos | Tetraedros | Tiempo secuencial | Tiempo con OpenMP (N nucleos) | Speedup |
+|---|---|---|---|---|
+| 3000  | ~19500 | _completar_ | _completar_ | _completar_ |
+
+**CUDA:** se evaluo y se descarto para este laboratorio. Bowyer-Watson
+incremental es inherentemente secuencial entre inserciones (el estado
+de la malla tras insertar el punto `i` es precondicion para insertar el
+punto `i+1`), asi que no se presta a paralelizarse en GPU sin
+reemplazar el algoritmo completo por un enfoque distinto (ej. Delaunay
+paralelo por *divide and conquer*, o triangulacion por lotes con
+re-flipping), que excede el alcance de este trabajo. Ademas, la GPU ya
+se usa activamente para el render (shaders GLSL, buffers de vertices),
+que es la parte que efectivamente se beneficia de paralelismo masivo en
+este proyecto.
+
 ## Los 17 organos
 
 Conteos de voxeles **originales** (antes de cualquier sub-muestreo),
@@ -217,7 +306,7 @@ via `report_voxel_counts.py`:
 | **TOTAL** | **5,309,271** | **1,273,857** | **32,708** | -- |
 
 `muscle` y `skeleton` son los que mas comprimen (822K y 198K voxeles de
-cascara, bajados al mismo tope de 3000 puntos que todos) -- ver
+cascara, bajados al mismo tope de 3000 puntos que todos), ver
 limitaciones.
 
 ## Limitaciones y dificultades
@@ -246,7 +335,7 @@ limitaciones.
   optimizar esa busqueda.
 - **Formato TIFF asumido**: se asume que todas las mascaras comparten
   el mismo shape de volumen (voxeles isotropicos, sin espaciado
-  distinto por eje) valido para este dataset puntual, pero no es un
+  distinto por eje), valido para este dataset puntual, pero no es un
   supuesto general para cualquier dataset medico.
 
 ## Capturas

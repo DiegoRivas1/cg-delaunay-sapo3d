@@ -5,20 +5,20 @@
       "skipped": false,
       "source_tiff": "bloodMasks.tiff",
       "points_file": "blood_points.xyz",
-      "num_points": 2492,
+      "num_points": 26035,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 2.0,
-      "nn_mean": 1.9637856936296276,
+      "nn_median": 1.0,
+      "nn_mean": 1.0036282031034542,
       "nn_min": 1.0,
-      "nn_max": 15.84297951775486,
-      "alpha_auto": 5.0,
+      "nn_max": 14.89966442575134,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        4.0,
-        6.0
+        2.0,
+        3.0
       ]
     },
     {
@@ -26,20 +26,20 @@
       "skipped": false,
       "source_tiff": "brainMasks.tiff",
       "points_file": "brain_points.xyz",
-      "num_points": 1200,
+      "num_points": 5374,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 1.4142135623730951,
-      "nn_mean": 1.5076182280861523,
+      "nn_median": 1.0,
+      "nn_mean": 1.0035455571025609,
       "nn_min": 1.0,
-      "nn_max": 3.1622776601683795,
-      "alpha_auto": 3.5355339059327378,
+      "nn_max": 1.4142135623730951,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        2.8284271247461903,
-        4.242640687119286
+        2.0,
+        3.0
       ]
     },
     {
@@ -47,20 +47,20 @@
       "skipped": false,
       "source_tiff": "duodenumMasks.tiff",
       "points_file": "duodenum_points.xyz",
-      "num_points": 1741,
+      "num_points": 12182,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 1.4142135623730951,
-      "nn_mean": 1.6962224062550153,
+      "nn_median": 1.0,
+      "nn_mean": 1.0074464595435648,
       "nn_min": 1.0,
-      "nn_max": 4.123105625617661,
-      "alpha_auto": 3.5355339059327378,
+      "nn_max": 1.4142135623730951,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        2.8284271247461903,
-        4.242640687119286
+        2.0,
+        3.0
       ]
     },
     {
@@ -68,20 +68,20 @@
       "skipped": false,
       "source_tiff": "eyeMasks.tiff",
       "points_file": "eye_points.xyz",
-      "num_points": 1525,
+      "num_points": 9024,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 1.4142135623730951,
-      "nn_mean": 1.6280191059534832,
+      "nn_median": 1.0,
+      "nn_mean": 1.0082622386111653,
       "nn_min": 1.0,
-      "nn_max": 3.1622776601683795,
-      "alpha_auto": 3.5355339059327378,
+      "nn_max": 1.4142135623730951,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        2.8284271247461903,
-        4.242640687119286
+        2.0,
+        3.0
       ]
     },
     {
@@ -89,20 +89,20 @@
       "skipped": false,
       "source_tiff": "eyeRetnaMasks.tiff",
       "points_file": "eyeRetna_points.xyz",
-      "num_points": 1832,
+      "num_points": 13317,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 1.4142135623730951,
-      "nn_mean": 1.7387654519582638,
+      "nn_median": 1.0,
+      "nn_mean": 1.0092068194384949,
       "nn_min": 1.0,
-      "nn_max": 4.123105625617661,
-      "alpha_auto": 3.5355339059327378,
+      "nn_max": 1.4142135623730951,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        2.8284271247461903,
-        4.242640687119286
+        2.0,
+        3.0
       ]
     },
     {
@@ -110,20 +110,20 @@
       "skipped": false,
       "source_tiff": "eyeWhiteMasks.tiff",
       "points_file": "eyeWhite_points.xyz",
-      "num_points": 1158,
+      "num_points": 5165,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 1.4142135623730951,
-      "nn_mean": 1.491435369597207,
+      "nn_median": 1.0,
+      "nn_mean": 1.0076729145657919,
       "nn_min": 1.0,
-      "nn_max": 10.198039027185569,
-      "alpha_auto": 3.5355339059327378,
+      "nn_max": 9.848857801796104,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        2.8284271247461903,
-        4.242640687119286
+        2.0,
+        3.0
       ]
     },
     {
@@ -131,20 +131,20 @@
       "skipped": false,
       "source_tiff": "heartMasks.tiff",
       "points_file": "heart_points.xyz",
-      "num_points": 1561,
+      "num_points": 8648,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 1.4142135623730951,
-      "nn_mean": 1.6041965828018734,
+      "nn_median": 1.0,
+      "nn_mean": 1.0114742603150515,
       "nn_min": 1.0,
       "nn_max": 33.54101966249684,
-      "alpha_auto": 3.5355339059327378,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        2.8284271247461903,
-        4.242640687119286
+        2.0,
+        3.0
       ]
     },
     {
@@ -152,20 +152,20 @@
       "skipped": false,
       "source_tiff": "ileumMasks.tiff",
       "points_file": "ileum_points.xyz",
-      "num_points": 1516,
+      "num_points": 9874,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 1.4142135623730951,
-      "nn_mean": 1.6657148018620538,
+      "nn_median": 1.0,
+      "nn_mean": 1.0079704858062477,
       "nn_min": 1.0,
-      "nn_max": 3.1622776601683795,
-      "alpha_auto": 3.5355339059327378,
+      "nn_max": 1.4142135623730951,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        2.8284271247461903,
-        4.242640687119286
+        2.0,
+        3.0
       ]
     },
     {
@@ -173,20 +173,20 @@
       "skipped": false,
       "source_tiff": "kidneyMasks.tiff",
       "points_file": "kidney_points.xyz",
-      "num_points": 1753,
+      "num_points": 12199,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 1.4142135623730951,
-      "nn_mean": 1.7104123718787707,
+      "nn_median": 1.0,
+      "nn_mean": 1.006281622185345,
       "nn_min": 1.0,
-      "nn_max": 3.7416573867739413,
-      "alpha_auto": 3.5355339059327378,
+      "nn_max": 1.4142135623730951,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        2.8284271247461903,
-        4.242640687119286
+        2.0,
+        3.0
       ]
     },
     {
@@ -194,20 +194,20 @@
       "skipped": false,
       "source_tiff": "lIntestineMasks.tiff",
       "points_file": "lIntestine_points.xyz",
-      "num_points": 1625,
+      "num_points": 9634,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 1.4142135623730951,
-      "nn_mean": 1.5971745738160052,
+      "nn_median": 1.0,
+      "nn_mean": 1.0082120396941312,
       "nn_min": 1.0,
-      "nn_max": 3.1622776601683795,
-      "alpha_auto": 3.5355339059327378,
+      "nn_max": 1.4142135623730951,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        2.8284271247461903,
-        4.242640687119286
+        2.0,
+        3.0
       ]
     },
     {
@@ -215,20 +215,20 @@
       "skipped": false,
       "source_tiff": "liverMasks.tiff",
       "points_file": "liver_points.xyz",
-      "num_points": 3039,
+      "num_points": 42951,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 2.0,
-      "nn_mean": 2.1818871821090124,
+      "nn_median": 1.0,
+      "nn_mean": 1.0077983595520712,
       "nn_min": 1.0,
-      "nn_max": 5.916079783099616,
-      "alpha_auto": 5.0,
+      "nn_max": 3.1622776601683795,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        4.0,
-        6.0
+        2.0,
+        3.0
       ]
     },
     {
@@ -236,20 +236,20 @@
       "skipped": false,
       "source_tiff": "lungMasks.tiff",
       "points_file": "lung_points.xyz",
-      "num_points": 1782,
+      "num_points": 13210,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 1.4142135623730951,
-      "nn_mean": 1.8121217220412262,
+      "nn_median": 1.0,
+      "nn_mean": 1.0039195075924783,
       "nn_min": 1.0,
-      "nn_max": 3.1622776601683795,
-      "alpha_auto": 3.5355339059327378,
+      "nn_max": 1.4142135623730951,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        2.8284271247461903,
-        4.242640687119286
+        2.0,
+        3.0
       ]
     },
     {
@@ -257,20 +257,20 @@
       "skipped": false,
       "source_tiff": "muscleMasks.tiff",
       "points_file": "muscle_points.xyz",
-      "num_points": 14935,
+      "num_points": 822268,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 3.3166247903554,
-      "nn_mean": 3.6981824463575785,
+      "nn_median": 1.0,
+      "nn_mean": 1.0088432984239553,
       "nn_min": 1.0,
       "nn_max": 44.37341546466758,
-      "alpha_auto": 8.291561975888499,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        6.6332495807108,
-        9.9498743710662
+        2.0,
+        3.0
       ]
     },
     {
@@ -278,20 +278,20 @@
       "skipped": false,
       "source_tiff": "nerveMasks.tiff",
       "points_file": "nerve_points.xyz",
-      "num_points": 1987,
+      "num_points": 16649,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 1.4142135623730951,
-      "nn_mean": 1.7806784987888786,
+      "nn_median": 1.0,
+      "nn_mean": 1.001791301368903,
       "nn_min": 1.0,
-      "nn_max": 5.0,
-      "alpha_auto": 3.5355339059327378,
+      "nn_max": 1.4142135623730951,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        2.8284271247461903,
-        4.242640687119286
+        2.0,
+        3.0
       ]
     },
     {
@@ -299,20 +299,20 @@
       "skipped": false,
       "source_tiff": "skeletonMasks.tiff",
       "points_file": "skeleton_points.xyz",
-      "num_points": 3015,
+      "num_points": 198340,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 3.3166247903554,
-      "nn_mean": 3.731993052736582,
+      "nn_median": 1.0,
+      "nn_mean": 1.0053210040647487,
       "nn_min": 1.0,
-      "nn_max": 11.575836902790225,
-      "alpha_auto": 8.291561975888499,
+      "nn_max": 6.6332495807108,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        6.6332495807108,
-        9.9498743710662
+        2.0,
+        3.0
       ]
     },
     {
@@ -320,14 +320,14 @@
       "skipped": false,
       "source_tiff": "spleenMasks.tiff",
       "points_file": "spleen_points.xyz",
-      "num_points": 574,
+      "num_points": 1385,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
       "nn_median": 1.0,
-      "nn_mean": 1.1861303487962918,
+      "nn_mean": 1.0210341060645174,
       "nn_min": 1.0,
       "nn_max": 17.291616465790582,
       "alpha_auto": 2.5,
@@ -341,20 +341,20 @@
       "skipped": false,
       "source_tiff": "stomachMasks.tiff",
       "points_file": "stomach_points.xyz",
-      "num_points": 2975,
+      "num_points": 67602,
       "volume_center_offset": [
         250.0,
         235.0,
         68.0
       ],
-      "nn_median": 2.23606797749979,
-      "nn_mean": 2.509222049471845,
+      "nn_median": 1.0,
+      "nn_mean": 1.0084954752679038,
       "nn_min": 1.0,
-      "nn_max": 10.816653826391969,
-      "alpha_auto": 5.5901699437494745,
+      "nn_max": 10.198039027185569,
+      "alpha_auto": 2.5,
       "alpha_range": [
-        4.47213595499958,
-        6.708203932499369
+        2.0,
+        3.0
       ]
     }
   ]

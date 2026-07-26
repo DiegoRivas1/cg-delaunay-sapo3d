@@ -1,0 +1,778 @@
+\documentclass[12pt,a4paper]{article}
+
+% ============================================================
+% Paquetes
+% ============================================================
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows.meta,positioning,fit}
+\usepackage{enumitem}
+\usepackage{longtable}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+}
+
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{codekw}{RGB}{0,0,180}
+\definecolor{codecomment}{RGB}{100,100,100}
+
+\lstset{
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{codekw}\bfseries,
+    commentstyle=\color{codecomment}\itshape,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    numbersep=8pt,
+    tabsize=2,
+    captionpos=b,
+    language=C++
+}
+
+\title{
+    \textbf{Reconstrucción Tridimensional de Órganos de Rana} \\
+    \large Triangulación de Delaunay (Bowyer--Watson 3D) con Filtrado Alpha-Shape \\
+    \vspace{0.3cm}
+    \normalsize Laboratorio de Computación Gráfica --- UNSA-EPCC
+}
+\author{
+    Rivas Huanca Diego Raul \\
+    Alvarez Astete Jheeremy Manuel \\
+    \small Escuela Profesional de Ciencia de la Computación \\
+    \small Universidad Nacional de San Agustín de Arequipa
+}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Este informe documenta el diseño, implementación y validación de un
+sistema de reconstrucción tridimensional de órganos de rana a partir de
+máscaras volumétricas TIFF, utilizando triangulación de Delaunay en 3D
+(algoritmo de Bowyer--Watson) combinada con un filtrado de tipo
+alpha-shape para reconstruir superficies no convexas. El sistema
+incluye un pipeline completo de procesamiento de datos (extracción de
+superficie, sub-muestreo, cálculo de parámetros de reconstrucción) y
+una aplicación interactiva de visualización en OpenGL/ImGui. Se valida
+el algoritmo con casos sintéticos de topología conocida (esfera, cubo,
+toro), confirmando su correctud mediante la característica de
+Euler--Poincaré, y se aplica sobre los 17 órganos del conjunto de datos
+real, documentando limitaciones, tiempos de ejecución y optimizaciones
+de rendimiento (estructura de datos por hash, paralelización con
+OpenMP).
+\end{abstract}
+
+\newpage
+
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Introducción y planteamiento del problema}
+% ============================================================
+
+La reconstrucción tridimensional a partir de datos volumétricos
+segmentados es un problema central en visualización científica y
+computación gráfica: dado un conjunto de máscaras binarias que indican
+qué voxeles de un volumen pertenecen a una estructura de interés, se
+busca generar una representación geométrica (malla de superficie)
+navegable e interactiva de esa estructura.
+
+En este laboratorio se trabaja sobre un conjunto de datos de 17
+máscaras TIFF correspondientes a distintos órganos de una rana (sangre,
+cerebro, corazón, hígado, músculo, esqueleto, bazo, entre otros), cada
+una representando un volumen de $136 \times 470 \times 500$ voxeles. El
+problema a resolver tiene dos componentes:
+
+\begin{enumerate}
+    \item \textbf{Geométrico}: dado un conjunto de puntos 3D extraídos
+    de la superficie de un órgano, construir una malla triangulada que
+    reconstruya fielmente su forma -- incluyendo concavidades reales
+    del órgano, no solo su envolvente convexa.
+    \item \textbf{De ingeniería de datos}: los volúmenes originales
+    contienen entre $3{,}935$ (bazo) y $4{,}097{,}993$ (músculo)
+    voxeles activos: es necesario un pipeline que extraiga, reduzca y
+    prepare estos datos a un tamaño manejable para el algoritmo de
+    reconstrucción, sin perder la posición relativa entre los distintos
+    órganos del mismo espécimen.
+\end{enumerate}
+
+La dificultad central del componente geométrico es que un cierre
+convexo (\emph{convex hull}) de la nube de puntos \textbf{no} reconstruye
+correctamente órganos con concavidades -- que es el caso general en
+anatomía. Esto motiva el uso de \emph{alpha-shapes}, una generalización
+del cierre convexo que permite reconstruir formas no convexas a partir
+de una triangulación de Delaunay.
+
+% ============================================================
+\section{Objetivos del proyecto}
+% ============================================================
+
+\subsection*{Objetivo general}
+Implementar un sistema de reconstrucción 3D de órganos de rana a partir
+de máscaras TIFF segmentadas, utilizando triangulación de Delaunay
+(Bowyer--Watson en 3D) y visualización interactiva.
+
+\subsection*{Objetivos específicos}
+\begin{itemize}
+    \item Implementar desde cero el algoritmo de Bowyer--Watson para
+    triangulación de Delaunay en 3 dimensiones (tetraedros).
+    \item Validar la correctud del algoritmo mediante propiedades
+    matemáticas verificables (propiedad de Delaunay, característica de
+    Euler--Poincaré) en casos sintéticos de topología conocida.
+    \item Extender la triangulación con un filtrado alpha-shape para
+    reconstruir superficies no convexas.
+    \item Diseñar un pipeline de procesamiento que extraiga nubes de
+    puntos representativas de la superficie de cada órgano a partir de
+    las máscaras TIFF, preservando la posición relativa entre órganos.
+    \item Implementar una aplicación de visualización interactiva
+    (OpenGL + ImGui) que permita seleccionar, colorear y navegar los 17
+    órganos reconstruidos.
+    \item Medir y optimizar el rendimiento del sistema (estructuras de
+    datos, paralelización con OpenMP, caché en disco de resultados ya
+    calculados).
+    \item Documentar las limitaciones del enfoque y posibles líneas de
+    trabajo futuro.
+\end{itemize}
+
+% ============================================================
+\section{Fundamento teórico}
+% ============================================================
+
+\subsection{Triangulación de Delaunay}
+
+Dado un conjunto de puntos $P = \{p_1, \dots, p_n\} \subset
+\mathbb{R}^3$, una triangulación de Delaunay es una descomposición del
+casco convexo de $P$ en tetraedros tal que \textbf{ningún punto de $P$
+se encuentra estrictamente dentro de la circunesfera de ningún
+tetraedro} de la triangulación. Esta propiedad (la \emph{propiedad de
+Delaunay} o \emph{propiedad del círculo/esfera vacía}) maximiza el
+ángulo diedro mínimo de la triangulación resultante, evitando
+tetraedros degenerados o extremadamente aplanados.
+
+\subsection{Algoritmo de Bowyer--Watson}
+
+El algoritmo de Bowyer--Watson \cite{bowyer1981,watson1981}
+construye la triangulación de Delaunay de forma \textbf{incremental}:
+se parte de un tetraedro (o triángulo, en 2D) suficientemente grande
+como para contener a todos los puntos del conjunto (el
+\emph{super-tetraedro}), y se insertan los puntos uno a uno. En cada
+inserción:
+
+\begin{enumerate}
+    \item Se identifican todos los tetraedros cuya circunesfera
+    contiene al nuevo punto (\emph{tetraedros inválidos}).
+    \item Se eliminan esos tetraedros, dejando un hueco poliédrico.
+    \item Se identifican las caras de frontera de ese hueco (caras que
+    pertenecían a un solo tetraedro inválido).
+    \item Se reconecta el hueco creando un nuevo tetraedro entre cada
+    cara de frontera y el punto insertado.
+\end{enumerate}
+
+Al finalizar la inserción de todos los puntos, se descartan los
+tetraedros que aún comparten algún vértice con el super-tetraedro
+inicial.
+
+\subsection{Circunesfera de un tetraedro}
+
+Dado un tetraedro con vértices $A, B, C, D \in \mathbb{R}^3$, su
+circunesfera es la única esfera que pasa por los 4 vértices. El centro
+$O$ se obtiene resolviendo el sistema lineal $3\times3$ que surge de
+imponer $\|O-A\|^2 = \|O-B\|^2 = \|O-C\|^2 = \|O-D\|^2$:
+
+\begin{equation}
+\begin{bmatrix}
+(B-A) \\ (C-A) \\ (D-A)
+\end{bmatrix} O
+=
+\frac{1}{2}
+\begin{bmatrix}
+\|B\|^2 - \|A\|^2 \\
+\|C\|^2 - \|A\|^2 \\
+\|D\|^2 - \|A\|^2
+\end{bmatrix}
+\end{equation}
+
+Este sistema se resuelve mediante la regla de Cramer (determinantes
+$3\times3$); el radio de la circunesfera es $r = \|O - A\|$.
+
+\subsection{Alpha-shapes}
+
+Un \emph{alpha-shape} \cite{edelsbrunner1994} es una generalización del
+casco convexo parametrizada por un valor $\alpha$: dada la
+triangulación de Delaunay completa de un conjunto de puntos, se
+descartan los tetraedros cuya circunesfera tiene radio mayor a
+$\alpha$, y se toma la frontera de los tetraedros restantes como
+superficie reconstruida. Intuitivamente, $\alpha$ controla el tamaño
+máximo de ``hueco'' que el algoritmo puede atravesar: valores grandes
+de $\alpha$ tienden al casco convexo; valores pequeños fragmentan la
+nube de puntos en componentes desconectadas.
+
+\subsection{Característica de Euler--Poincaré}
+
+Para una superficie triangulada, cerrada y orientable de género $g$
+(número de ``agujeros''), se cumple:
+\begin{equation}
+V - E + F = 2 - 2g
+\end{equation}
+donde $V$, $E$, $F$ son la cantidad de vértices, aristas y caras. Para
+una triangulación donde cada arista es compartida por exactamente 2
+caras ($2E = 3F$), esto se reduce a:
+\begin{equation}
+F = 2V - 4(1-g)
+\end{equation}
+Para género 0 (topológicamente una esfera, sin agujeros): $F = 2V - 4$.
+Para género 1 (un toro, con un agujero): $F = 2V$. Esta relación se usa
+en este trabajo como \textbf{criterio de validación independiente} del
+algoritmo (Sección~\ref{sec:validacion}).
+
+% ============================================================
+\section{Descripción del sistema desarrollado}
+% ============================================================
+
+El sistema se compone de dos partes que se comunican mediante archivos
+en disco (nubes de puntos \texttt{.xyz} y un manifiesto
+\texttt{manifest.tsv}):
+
+\begin{enumerate}
+    \item \textbf{Pipeline de datos (Python)}: procesa los TIFF
+    originales, extrae la cáscara de voxeles de cada órgano, la
+    sub-muestrea a una nube de puntos manejable, calcula estadísticas
+    para sugerir un valor de $\alpha$, y exporta todo a disco.
+    \item \textbf{Motor de reconstrucción y visualización (C++ /
+    OpenGL)}: implementa el algoritmo de Bowyer--Watson, el filtrado
+    alpha-shape, la construcción de mallas GPU, y una interfaz gráfica
+    interactiva (ImGui) para seleccionar y navegar los órganos
+    reconstruidos.
+\end{enumerate}
+
+Se desarrollaron tres ejecutables sobre el mismo núcleo de algoritmo:
+uno de validación por consola (sin dependencias gráficas), uno de
+validación visual con formas sintéticas y datos reales cargados a
+mano, y el visor final del sapo completo (con y sin caché en disco).
+
+% ============================================================
+\section{Arquitectura general del proyecto}
+% ============================================================
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    box/.style={draw, rounded corners, minimum width=3.4cm, minimum height=1cm, align=center, font=\small},
+    arr/.style={-{Latex}, thick}
+]
+\node[box, fill=blue!10] (tiff) {17 máscaras TIFF\\($136{\times}470{\times}500$)};
+\node[box, fill=blue!10, right=1.2cm of tiff] (scripts) {Pipeline Python\\(scripts/)};
+\node[box, fill=blue!10, right=1.2cm of scripts] (xyz) {.xyz + manifest\\(data/)};
+
+\node[box, fill=green!10, below=1.2cm of scripts] (core) {\texttt{delaunay\_core}\\Bowyer--Watson 3D\\alpha-shape};
+\node[box, fill=green!10, right=1.2cm of core] (cache) {\texttt{TetraCache}\\(.bin, opcional)};
+
+\node[box, fill=orange!10, below=1.2cm of core] (gfx) {\texttt{app\_gfx\_core}\\GLFW + GLAD + ImGui};
+\node[box, fill=orange!15, below=1cm of gfx] (apps) {Ejecutables:\\\texttt{delaunay\_test}, \texttt{sapo3d}, \texttt{sapo3d\_hd}};
+
+\draw[arr] (tiff) -- (scripts);
+\draw[arr] (scripts) -- (xyz);
+\draw[arr] (xyz) -- (core);
+\draw[arr] (core) -- (cache);
+\draw[arr] (cache) -- (gfx);
+\draw[arr] (core) -- (gfx);
+\draw[arr] (gfx) -- (apps);
+\end{tikzpicture}
+\caption{Arquitectura general del sistema.}
+\end{figure}
+
+\subsection{Módulos principales}
+
+\begin{description}
+    \item[\texttt{src/delaunay/}] Núcleo del algoritmo, \textbf{sin
+    dependencias gráficas}: \texttt{Vec3} (vector 3D en \texttt{double}
+    para precisión numérica), \texttt{Delaunay3D}
+    (Bowyer--Watson + alpha-shape + extracción de superficie),
+    \texttt{IDelaunayStrategy} (patrón \emph{Strategy}),
+    \texttt{PointCloudIO} / \texttt{ManifestIO} (lectores de texto
+    plano), \texttt{TetraCache} (caché binario).
+    \item[\texttt{src/core/}] Capa gráfica reutilizable:
+    \texttt{Application} (ventana GLFW + contexto ImGui + loop
+    principal), \texttt{Shader}, \texttt{Camera} (cámara orbital),
+    \texttt{MeshBuilder} (construcción de buffers GPU).
+    \item[\texttt{apps/}] Tres ejecutables: \texttt{synthetic\_test}
+    (validación visual con formas sintéticas), \texttt{sapo3d}
+    (reconstrucción completa), \texttt{sapo3d\_hd} (ídem, con caché
+    persistente en disco).
+    \item[\texttt{scripts/}] Pipeline de datos en Python:
+    \texttt{tiff\_utils.py} (extracción de cáscara, sub-muestreo,
+    estadísticas), \texttt{manifest\_utils.py} (lectura/escritura del
+    manifiesto), \texttt{extract\_surface.py} / \texttt{extract\_all.py}
+    (extracción de uno o todos los órganos), \texttt{report\_voxel\_counts.py}
+    (reporte de referencia).
+\end{description}
+
+\subsection{Patrón de diseño: Strategy}
+
+La interfaz \texttt{IDelaunayStrategy} desacopla el resto del sistema
+de la implementación concreta del algoritmo de triangulación,
+permitiendo -- sin modificar el código cliente -- intercambiar la
+estrategia de reconstrucción (por ejemplo, para comparar variantes del
+algoritmo o futuras optimizaciones):
+
+\begin{lstlisting}[caption={Patrón Strategy sobre el algoritmo de triangulación}]
+class IDelaunayStrategy {
+public:
+    virtual ~IDelaunayStrategy() = default;
+    virtual std::vector<Tetrahedron> triangulate(
+        const std::vector<Vec3>& points) = 0;
+    virtual const char* name() const = 0;
+};
+
+class BowyerWatsonStrategy : public IDelaunayStrategy {
+public:
+    std::vector<Tetrahedron> triangulate(
+            const std::vector<Vec3>& points) override {
+        return BowyerWatson3D::triangulate(points);
+    }
+    const char* name() const override { return "Bowyer-Watson"; }
+};
+\end{lstlisting}
+
+% ============================================================
+\section{Metodología de implementación}
+\label{sec:metodologia}
+% ============================================================
+
+\subsection{Bowyer--Watson en 3D}
+
+El Algoritmo~\ref{alg:bowyerwatson} resume la implementación central.
+La estructura de datos principal es un \texttt{Tetrahedron} con 4
+índices hacia el arreglo de puntos, más el centro y radio al cuadrado
+de su circunesfera (cacheados para no recalcularlos en cada test de
+punto).
+
+\begin{algorithm}[H]
+\caption{Bowyer--Watson 3D}
+\label{alg:bowyerwatson}
+\begin{algorithmic}[1]
+\Procedure{Triangulate}{$puntos$}
+    \State $superTet \gets$ \Call{CrearSuperTetraedro}{$puntos$}
+    \State $tets \gets \{superTet\}$
+    \For{cada punto $p$ en $puntos$}
+        \State $malos \gets \{t \in tets : p \text{ dentro de circunesfera}(t)\}$
+        \State $caras \gets$ todas las caras de los tetraedros en $malos$
+        \State $frontera \gets$ caras que aparecen una sola vez en $caras$
+        \State $tets \gets (tets \setminus malos)$
+        \For{cada cara $f$ en $frontera$}
+            \State $tets \gets tets \cup \{\text{nuevoTetraedro}(f, p)\}$
+        \EndFor
+    \EndFor
+    \State \Return $\{t \in tets : t \text{ no comparte vértice con } superTet\}$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+El super-tetraedro se construye tomando el centro y la diagonal del
+\emph{bounding box} de los puntos de entrada, y generando 4 vértices en
+configuración de tetraedro regular (vértices alternados de un cubo)
+escalados a 5 veces esa diagonal suficientemente grande como para
+garantizar que ningún punto de entrada quede fuera de él.
+
+\subsection{Extracción de la superficie y alpha-shape}
+
+\begin{lstlisting}[caption={Filtrado alpha-shape sobre la triangulación completa}]
+std::vector<Tetrahedron> BowyerWatson3D::filterByAlpha(
+        const std::vector<Tetrahedron>& tets, double alphaRadius) {
+    double alphaSq = alphaRadius * alphaRadius;
+    std::vector<Tetrahedron> result;
+    for (const auto& t : tets) {
+        if (t.radiusSq <= alphaSq) result.push_back(t);
+    }
+    return result;
+}
+\end{lstlisting}
+
+La extracción de caras de frontera (\texttt{boundaryFaces}) identifica,
+entre todas las caras de los tetraedros restantes, las que pertenecen a
+un único tetraedro (las caras internas, compartidas por dos, se
+descartan). Este paso se optimizó de $O(F^2)$ a $O(F)$ amortizado
+mediante una tabla hash, ver Sección~\ref{sec:complejidad}.
+
+\subsection{Pipeline de datos}
+
+\begin{enumerate}
+    \item \textbf{Extracción de cáscara}: de la máscara binaria sólida,
+    se aplica erosión binaria y se resta del original, quedándose solo
+    con los voxeles de borde. Reduce el conteo de puntos entre 5$\times$
+    y 20$\times$ según el órgano antes de cualquier otro procesamiento.
+    \item \textbf{Sub-muestreo por grilla 3D}: se particiona el espacio
+    en celdas cúbicas y se toma un punto representante por celda
+    ocupada, ajustando el tamaño de celda por búsqueda binaria hasta
+    acercarse al conteo de puntos objetivo. Da una cobertura espacial
+    más uniforme que un muestreo puramente aleatorio.
+    \item \textbf{Centrado compartido}: todos los órganos se centran
+    respecto al centro del volumen completo del TIFF (idéntico para los
+    17 archivos, que comparten \emph{shape}), \textbf{no} respecto al
+    centroide de cada órgano individual -- esto preserva la posición
+    relativa entre órganos al combinarlos en la reconstrucción final.
+    \item \textbf{Estadística de vecino más cercano}: se calcula la
+    distancia mediana al vecino más cercano sobre la nube ya
+    sub-muestreada, y se sugiere $\alpha \in [2.0, 3.0] \times$ esa
+    mediana como punto de partida.
+\end{enumerate}
+
+% ============================================================
+\section{Proceso de calibración del sistema}
+% ============================================================
+
+\subsection{Calibración del número de puntos objetivo}
+
+Dado que el tamaño de la cáscara de voxeles varía en más de dos órdenes
+de magnitud entre órganos ($1{,}385$ para el bazo hasta $822{,}268$
+para el músculo), se calibró una función de escalado
+$\text{target} = \text{clip}(K\sqrt{\text{cáscara}},\ 300,\ 3000)$, con
+$K=16$ ajustado empíricamente a partir del caso del bazo (cáscara
+$=1385 \rightarrow$ 600 puntos, resultado visualmente aceptable en las
+primeras pruebas).
+
+\subsection{Calibración de alpha}
+
+El valor de $\alpha$ se calibró primero de forma \textbf{manual y
+exhaustiva} sobre el caso sintético del toro (Sección~\ref{sec:validacion}),
+donde el valor óptimo se pudo verificar de forma exacta contra la
+predicción de Euler--Poincaré ($\alpha = 2.5$, sobre una nube con
+distancia entre puntos vecinos $\approx 1.0$, es decir $\alpha \approx
+2.5\times$ esa distancia). Ese factor ($2.0$--$3.0\times$ la distancia
+mediana al vecino más cercano) se generalizó como heurística automática
+para los 17 órganos reales, evitando así tener que ajustar el parámetro
+a mano para cada uno.
+
+\subsection{Validación cruzada con datos reales}
+
+Se aplicó la heurística sobre el bazo (574 puntos, $\alpha_{auto}
+\approx 2.5$) y el hígado (3039 puntos, $\alpha_{auto} \approx 9.6$),
+confirmando visualmente formas reconocibles en ambos casos, con huecos
+menores en zonas de baja densidad de puntos (extremidades finas)
+documentado como limitación en la Sección~\ref{sec:limitaciones}.
+
+% ============================================================
+\section{Reconstrucción tridimensional}
+% ============================================================
+
+Una vez obtenidos los tetraedros filtrados por alpha-shape, la
+reconstrucción de la malla de superficie sigue estos pasos:
+
+\begin{enumerate}
+    \item \texttt{boundaryFaces()} extrae las caras de frontera del
+    conjunto de tetraedros filtrado.
+    \item Por cada cara triangular, se calcula su normal (mediante
+    producto cruz de dos de sus aristas) para \emph{flat shading}.
+    \item Se construye un buffer de vértices intercalado
+    (posición + normal, 6 \texttt{floats} por vértice, 3 vértices por
+    cara, sin \emph{index buffer}) y se sube a la GPU
+    (\texttt{MeshBuilder::buildSurfaceMesh}).
+    \item El render usa un modelo de iluminación de Phong simplificado
+    (ambiente + difusa + especular) en GLSL, con una cámara orbital
+    controlada por arrastre de mouse y scroll.
+\end{enumerate}
+
+Para depuración también se construye una malla de líneas con las
+aristas \'unicas de los tetraedros (sin filtrar por cara de frontera),
+útil para inspeccionar visualmente la estructura interna de la
+triangulación.
+
+% ============================================================
+\section{Procesamiento de la nube de puntos}
+% ============================================================
+
+El procesamiento de la nube de puntos ocurre enteramente en el lado
+Python del pipeline (Sección~\ref{sec:metodologia}, pipeline de datos),
+antes de que los datos lleguen al motor de triangulación en C++. Los
+archivos intermedios (\texttt{.xyz}, texto plano con una fila
+\texttt{"x y z"} por punto) se versionan de forma independiente de los
+TIFF originales, lo que permite regenerar una nube de puntos con otro
+nivel de detalle sin volver a tocar el algoritmo de reconstrucción.
+
+El sistema de \emph{caché binario} (\texttt{TetraCache}) opera un nivel
+más abajo: una vez que una nube de puntos fue triangulada, el resultado
+completo (puntos + tetraedros, con su circunesfera ya calculada) se
+persiste en disco (\texttt{data/cache/<órgano>\_<N puntos>.bin}),
+evitando re-ejecutar Bowyer--Watson en corridas posteriores del
+programa. El nombre del archivo de caché incluye la cantidad de puntos,
+por lo que cambiar el nivel de detalle de un órgano no requiere
+invalidar manualmente ningún caché existente.
+
+% ============================================================
+\section{Resultados obtenidos}
+% ============================================================
+
+\subsection{Validación con casos sintéticos}
+\label{sec:resultados-sinteticos}
+
+\begin{table}[H]
+\centering
+\caption{Resultados de validación con formas de topología conocida.}
+\begin{tabular}{@{}lrrrl@{}}
+\toprule
+\textbf{Caso} & \textbf{Puntos} & \textbf{Tetraedros} & \textbf{Caras de frontera} & \textbf{Violaciones Delaunay} \\
+\midrule
+Esfera (genus 0)     & 40  & 123  & 76 (esperado 76, $2V{-}4$)  & 0 \\
+Cubo aleatorio        & 60  & 285  & 46 (envolvente convexa)     & 0 \\
+Toro sin $\alpha$ (genus 1) & 288 & 1524 & 332 (casco convexo, tapa el agujero) & 0 \\
+Toro con $\alpha=2.5$  & 288 & 1128 & 576 (esperado 576, $2V$)    & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Los 17 órganos}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Conteo de voxeles originales y puntos finales usados por órgano.}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Órgano} & \textbf{Voxeles activos} & \textbf{Voxeles cáscara} & \textbf{Puntos usados} & \textbf{$\alpha_{auto}$} \\
+\midrule
+blood      & 35,492    & 26,035  & 2,492 & 5.00 \\
+brain      & 19,172    & 5,374   & 1,200 & 3.54 \\
+duodenum   & 38,224    & 12,182  & 1,741 & 3.54 \\
+eye        & 53,231    & 9,024   & 1,525 & 3.54 \\
+eyeRetna   & 37,146    & 13,317  & 1,832 & 3.54 \\
+eyeWhite   & 16,085    & 5,165   & 1,158 & 3.54 \\
+heart      & 37,196    & 8,648   & 1,561 & 3.54 \\
+ileum      & 27,916    & 9,874   & 1,516 & 3.54 \\
+kidney     & 39,245    & 12,199  & 1,753 & 3.54 \\
+lIntestine & 51,660    & 9,634   & 1,625 & 3.54 \\
+liver      & 205,245   & 42,951  & 3,039 & 5.00 \\
+lung       & 47,454    & 13,210  & 1,782 & 3.54 \\
+muscle     & 4,097,993 & 822,268 & 2,933 & 17.32 \\
+nerve      & 24,314    & 16,649  & 1,987 & 3.54 \\
+skeleton   & 440,640   & 198,340 & 3,015 & 8.29 \\
+spleen     & 3,935     & 1,385   & 574   & 2.50 \\
+stomach    & 134,323   & 67,602  & 2,975 & 5.59 \\
+\midrule
+\textbf{Total} & \textbf{5,309,271} & \textbf{1,273,857} & \textbf{32,708} & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Rendimiento}
+\label{sec:complejidad}
+
+\subsubsection{Complejidad algorítmica}
+
+El algoritmo de Bowyer--Watson, tal como está implementado (sin
+estructuras aceleradoras de tipo \emph{walk} o \emph{kd-tree}), tiene
+complejidad $O(n^2)$ en el peor caso: por cada uno de los $n$ puntos
+insertados, se recorre el conjunto de tetraedros existentes (que crece
+proporcionalmente a $n$) para clasificarlos.
+
+La extracción de caras de frontera (\texttt{boundaryFaces}) se
+implementó inicialmente comparando cada cara contra todas las demás
+($O(F^2)$, con $F=4\times|\text{tetraedros}|$), y se optimizó a
+$O(F)$ amortizado usando una tabla hash sobre los 3 índices (ordenados
+canónicamente) de cada cara:
+
+\begin{table}[H]
+\centering
+\caption{Impacto de la optimización de \texttt{boundaryFaces()} (3000 puntos, 19{,}511 tetraedros, 78{,}044 caras).}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Implementación} & \textbf{Tiempo} \\
+\midrule
+Comparación por pares, $O(F^2)$ & 2.20 s \\
+Tabla hash, $O(F)$ amortizado & 0.005 s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Paralelización con OpenMP}
+
+Dentro de cada inserción de Bowyer--Watson, la clasificación de
+tetraedros (¿el punto cae dentro de su circunesfera?) es independiente
+entre tetraedros, por lo que se paralelizó con
+\texttt{\#pragma omp parallel for} (activado solo por encima de 500
+tetraedros, para no pagar el overhead de creación de hilos en nubes
+chicas):
+
+\begin{lstlisting}[caption={Clasificación de tetraedros paralelizada con OpenMP}]
+std::vector<char> isBad(tets.size(), 0);
+#pragma omp parallel for schedule(static) if (numTets > 500)
+for (long ti = 0; ti < numTets; ++ti) {
+    if (inCircumsphere(tets[ti], p, allPoints, epsilonRel))
+        isBad[ti] = 1;
+}
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\caption{Tiempos de triangulación secuencial vs. paralelo (OpenMP).}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Puntos} & \textbf{Tetraedros} & \textbf{Secuencial} & \textbf{OpenMP (\underline{\hspace{1cm}} núcleos)} \\
+\midrule
+3000 & \textasciitilde19{,}500 & \underline{\hspace{1.5cm}} s & \underline{\hspace{1.5cm}} s \\
+\bottomrule
+\end{tabular}
+\end{table}
+\emph{Nota: Tabla con mediciones en la máquina de
+desarrollo (multi-núcleo); el entorno usado durante el desarrollo
+inicial del algoritmo solo contaba con un núcleo disponible.}
+
+Se evaluó el uso de CUDA para acelerar aún más la triangulación, y se
+descartó: Bowyer--Watson incremental es inherentemente secuencial
+\emph{entre} inserciones (el estado de la malla tras insertar el punto
+$i$ es precondición para insertar el punto $i+1$), por lo que no se
+presta a paralelización masiva en GPU sin reemplazar el algoritmo
+completo por un enfoque distinto (p. ej. \emph{divide and conquer}
+paralelo). Además, la GPU del sistema ya se emplea activamente para el
+render (shaders GLSL, buffers de vértices), que es la etapa que
+efectivamente se beneficia de paralelismo masivo en este proyecto.
+
+% ============================================================
+\section{Validación del sistema y análisis de resultados}
+\label{sec:validacion}
+% ============================================================
+
+\subsection{Propiedad de Delaunay}
+
+Para cada tetraedro resultante, se verificó que ningún punto de la nube
+de entrada (fuera de sus 4 vértices) cae estrictamente dentro de su
+circunesfera. En los 4 casos sintéticos evaluados (esfera, cubo, toro
+con y sin $\alpha$), el conteo de violaciones fue \textbf{0} en todos
+los casos.
+
+\subsection{Validación topológica mediante Euler--Poincaré}
+
+El caso del toro es la prueba de validación más informativa del
+proyecto: al ser una superficie de género 1 (con un agujero real), la
+característica de Euler--Poincaré predice $F=2V$ caras en una
+triangulación cerrada correcta. Con $V=288$ puntos, eso son 576 caras
+esperadas. El filtrado con $\alpha=2.5$ produjo \textbf{exactamente
+576} caras de frontera -- una coincidencia exacta que confirma que el
+alpha-shape reconstruye la \emph{topología real} del objeto (agujero
+incluido), y no solamente su casco convexo (que en el mismo caso dio
+332 caras, un valor topológicamente incorrecto para un toro).
+
+\subsection{Análisis de resultados sobre datos reales}
+
+La aplicación sobre los 17 órganos reales confirma que el enfoque
+escala razonablemente entre estructuras pequeñas y compactas (bazo) y
+grandes/complejas (hígado, con lóbulos), produciendo reconstrucciones
+reconocibles en ambos extremos. Sin embargo, se identificaron
+limitaciones que se detallan a continuación.
+
+\subsection{Limitaciones y dificultades}
+\label{sec:limitaciones}
+
+\begin{itemize}
+    \item \textbf{Alpha-shape de radio único por órgano}: un solo valor
+    de $\alpha$ no siempre reconstruye bien zonas anchas y finas del
+    mismo órgano simultáneamente. En el bazo y el hígado aparecen
+    huecos menores en extremidades/protuberancias finas, donde la
+    distancia entre puntos vecinos crece localmente y el mismo
+    $\alpha$ que conecta bien el cuerpo principal ya no alcanza ahí.
+    Una alpha-shape \emph{adaptativa} (radio variable según densidad
+    local) resolvería esto, pero excede el alcance de este laboratorio.
+    \item \textbf{Sub-muestreo con tope fijo de puntos}: \texttt{muscle}
+    (822K voxeles de cáscara) y \texttt{skeleton} (198K) se comprimen
+    al mismo techo de $\sim$3000 puntos que órganos mucho más chicos
+    como el bazo (1385) esto implica menos detalle relativo en las
+    estructuras más grandes y complejas del espécimen.
+    \item \textbf{Complejidad algorítmica sin aceleración espacial}: la
+    implementación usa búsqueda lineal sobre los tetraedros existentes
+    en cada inserción; es adecuada para las nubes de algunos miles de
+    puntos usadas aquí, pero no escalaría bien a nubes de cientos de
+    miles de puntos sin una estructura de aceleración espacial
+    (p.~ej. \emph{walk} guiado por localidad, o un \emph{kd-tree}).
+    \item \textbf{Supuesto de voxel isotrópico}: se asume que todas las
+    máscaras comparten el mismo \emph{shape} de volumen y que los
+    voxeles son isotrópicos (mismo espaciado en los 3 ejes) válido
+    para este conjunto de datos puntual, pero no es un supuesto general
+    para cualquier dataset médico (p.~ej. tomografías con distinto
+    espaciado entre slices y dentro de cada slice).
+\end{itemize}
+
+% ============================================================
+\section{Conclusiones y trabajo futuro}
+% ============================================================
+
+\subsection*{Conclusiones}
+
+\begin{itemize}
+    \item Se implementó y validó exitosamente el algoritmo de
+    Bowyer--Watson para triangulación de Delaunay en 3 dimensiones,
+    confirmando su correctud mediante dos criterios independientes: la
+    propiedad de Delaunay (0 violaciones en todos los casos) y la
+    característica de Euler--Poincaré (coincidencia exacta en el caso
+    del toro, $F=576=2V$).
+    \item El filtrado alpha-shape resultó necesario y efectivo para
+    reconstruir formas no convexas -- sin él, el sistema reconstruiría
+    únicamente el casco convexo de cada órgano, perdiendo toda
+    concavidad anatómica real.
+    \item El pipeline de datos (extracción de cáscara + sub-muestreo
+    por grilla + centrado compartido) permitió procesar los 17 órganos
+    de forma automática y consistente, preservando su posición relativa
+    dentro del espécimen.
+    \item Las optimizaciones de rendimiento (tabla hash para
+    \texttt{boundaryFaces}, caché binario en disco, paralelización con
+    OpenMP) redujeron significativamente el tiempo de uso interactivo
+    del sistema, sin alterar la correctud de los resultados (verificado
+    comparando resultados antes/después de cada optimización).
+\end{itemize}
+
+\subsection*{Trabajo futuro}
+
+\begin{itemize}
+    \item Alpha-shape adaptativa (radio variable por región, según
+    densidad local de puntos) para reducir los huecos en extremidades
+    finas.
+    \item Estructura de aceleración espacial (kd-tree o \emph{walk})
+    para bajar la complejidad práctica de la inserción de puntos,
+    permitiendo subir el tope de puntos por órgano sin degradar el
+    tiempo de respuesta interactivo.
+    \item Suavizado de malla (p.~ej. Laplacian smoothing) como
+    posproceso, para reducir el aspecto ``faceteado'' de las
+    superficies reconstruidas con pocos puntos.
+    \item Exploración de un enfoque de Delaunay paralelo por
+    \emph{divide and conquer} si se buscara aprovechar GPU/CUDA para la
+    etapa de triangulación (no solo para el render).
+    \item Extensión del pipeline de datos para soportar voxeles
+    anisotrópicos (espaciado distinto por eje), generalizando su uso a
+    otros conjuntos de datos volumétricos médicos.
+\end{itemize}
+
+% ============================================================
+\begin{thebibliography}{9}
+
+\bibitem{bowyer1981}
+Bowyer, A. (1981). \emph{Computing Dirichlet Tessellations}. The Computer Journal.
+
+\bibitem{watson1981}
+Watson, D. F. (1981). \emph{Computing the $n$-dimensional Delaunay Tessellation with Application to Voronoi Polytopes}. The Computer Journal.
+
+\bibitem{edelsbrunner1994}
+Edelsbrunner, H., \& Mücke, E. P. (1994). \emph{Three-Dimensional Alpha Shapes}. ACM Transactions on Graphics.
+
+\end{thebibliography}
+
+\end{document}

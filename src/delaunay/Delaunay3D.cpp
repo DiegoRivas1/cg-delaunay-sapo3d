@@ -118,9 +118,22 @@ std::vector<Tetrahedron> BowyerWatson3D::triangulate(const std::vector<Vec3>& po
         badTets.reserve(8);
         goodTets.reserve(tets.size());
 
-        for (const auto& t : tets) {
-            if (inCircumsphere(t, p, allPoints, epsilonRel)) badTets.push_back(t);
-            else goodTets.push_back(t);
+        // Clasificar cada tetraedro (bueno/malo) es un chequeo de
+        // circunesfera independiente por tetraedro -- se puede paralelizar
+        // sin problemas de dependencia. Se guarda en un vector de flags y
+        // se particiona secuencialmente despues (evita condiciones de
+        // carrera al hacer push_back desde varios hilos).
+        std::vector<char> isBad(tets.size(), 0);
+        const long numTets = static_cast<long>(tets.size());
+#pragma omp parallel for schedule(static) if (numTets > 500)
+        for (long ti = 0; ti < numTets; ++ti) {
+            if (inCircumsphere(tets[static_cast<size_t>(ti)], p, allPoints, epsilonRel)) {
+                isBad[static_cast<size_t>(ti)] = 1;
+            }
+        }
+        for (size_t ti = 0; ti < tets.size(); ++ti) {
+            if (isBad[ti]) badTets.push_back(tets[ti]);
+            else goodTets.push_back(tets[ti]);
         }
 
         // Caras de los tetraedros invalidos. Las que se repiten son
