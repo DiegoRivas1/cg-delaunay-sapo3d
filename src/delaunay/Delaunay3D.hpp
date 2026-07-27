@@ -48,6 +48,18 @@ public:
     static std::vector<Tetrahedron> filterByAlpha(const std::vector<Tetrahedron>& tets,
                                                     double alphaRadius);
 
+    // Alpha ADAPTATIVO: en vez de un unico radio global, cada tetraedro
+    // se compara contra un umbral calculado a partir de sus propios 4
+    // vertices: alpha_local(t) = multiplier * promedio(localScale[v] :
+    // v en t.v). 'localScale' es la densidad local por punto (ver
+    // scripts/tiff_utils.py::per_point_local_scale) -- mismo tamano que
+    // 'points'. Reconstruye mejor zonas de densidad no uniforme (cuerpo
+    // ancho + extremidades finas del mismo organo) que un alpha global.
+    static std::vector<Tetrahedron> filterByAdaptiveAlpha(
+        const std::vector<Tetrahedron>& tets,
+        const std::vector<double>& localScale,
+        double multiplier);
+
 private:
     static bool computeCircumsphere(const Vec3& a, const Vec3& b,
                                      const Vec3& c, const Vec3& d,

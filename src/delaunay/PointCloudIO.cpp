@@ -5,7 +5,15 @@
 namespace PointCloudIO {
 
 std::vector<Vec3> loadXYZ(const std::string& path, std::string* outError) {
+    std::vector<double> unused;
+    return loadXYZWithScale(path, unused, outError);
+}
+
+std::vector<Vec3> loadXYZWithScale(const std::string& path,
+                                    std::vector<double>& outLocalScale,
+                                    std::string* outError) {
     std::vector<Vec3> points;
+    outLocalScale.clear();
 
     std::ifstream file(path);
     if (!file.is_open()) {
@@ -14,16 +22,17 @@ std::vector<Vec3> loadXYZ(const std::string& path, std::string* outError) {
     }
 
     std::string line;
-    int lineNum = 0;
     int badLines = 0;
     while (std::getline(file, line)) {
-        ++lineNum;
         if (line.empty() || line[0] == '#') continue;
 
         std::istringstream iss(line);
         double x, y, z;
+        double localScale = 0.0;  // 0.0 = no disponible (archivo formato viejo)
         if (iss >> x >> y >> z) {
             points.emplace_back(x, y, z);
+            iss >> localScale;  // opcional: si no hay 4ta columna, queda en 0.0
+            outLocalScale.push_back(localScale);
         } else {
             ++badLines;
         }

@@ -125,7 +125,15 @@ std::vector<Tetrahedron> BowyerWatson3D::triangulate(const std::vector<Vec3>& po
         // carrera al hacer push_back desde varios hilos).
         std::vector<char> isBad(tets.size(), 0);
         const long numTets = static_cast<long>(tets.size());
-#pragma omp parallel for schedule(static) if (numTets > 500)
+        // Umbral calibrado con mediciones reales (ver README/informe,
+        // seccion Complejidad y optimizaciones): con la granularidad
+        // actual (una region paralela por punto insertado), OpenMP
+        // recien compensa el overhead de sincronizar hilos a partir de
+        // ~100k tetraedros vigentes (~15-20k puntos insertados). Por
+        // debajo de eso, la version secuencial es mas rapida -- que es
+        // el caso de los 17 organos de este proyecto (maximo ~3000
+        // puntos), asi que en la practica esto corre secuencial.
+#pragma omp parallel for schedule(static) if (numTets > 100000)
         for (long ti = 0; ti < numTets; ++ti) {
             if (inCircumsphere(tets[static_cast<size_t>(ti)], p, allPoints, epsilonRel)) {
                 isBad[static_cast<size_t>(ti)] = 1;
@@ -185,6 +193,30 @@ std::vector<Tetrahedron> BowyerWatson3D::triangulate(const std::vector<Vec3>& po
             if (touchesSuper) break;
         }
         if (!touchesSuper) result.push_back(t);
+    }
+    return result;
+}
+
+std::vector<Tetrahedron> BowyerWatson3D::filterByAdaptiveAlpha(
+        const std::vector<Tetrahedron>& tets,
+        const std::vector<double>& localScale,
+        double multiplier) {
+    std::vector<Tetrahedron> result;
+    result.reserve(tets.size());
+
+    for (const auto& t : tets) {
+        double avgLocal = 0.0;
+        for (int idx : t.v) {
+            avgLocal += (idx >= 0 && static_cast<size_t>(idx) < localScale.size())
+                            ? localScale[static_cast<size_t>(idx)]
+                            : 0.0;
+        }
+        avgLocal *= 0.25;  // promedio de los 4 vertices
+
+        double alphaLocal = multiplier * avgLocal;
+        double alphaLocalSq = alphaLocal * alphaLocal;
+
+        if (t.radiusSq <= alphaLocalSq) result.push_back(t);
     }
     return result;
 }

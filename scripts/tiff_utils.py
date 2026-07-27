@@ -52,6 +52,25 @@ def nearest_neighbor_stats(points: np.ndarray):
     return float(np.median(nn)), float(np.mean(nn)), float(nn.min()), float(nn.max())
 
 
+def per_point_local_scale(points: np.ndarray, k: int = 6) -> np.ndarray:
+    """Distancia PROMEDIO a los k vecinos mas cercanos, por punto -- estimador
+    de densidad local (mas robusto que un solo vecino mas cercano, que puede
+    ser ruidoso). Base para el alpha ADAPTATIVO: en vez de un unico alpha
+    global por organo, cada tetraedro usa el promedio de este valor en sus
+    4 vertices como umbral -- se adapta a zonas anchas (puntos densos, alpha
+    chico) y finas (puntos dispersos, alpha grande) del MISMO organo.
+    O(n log n) via KD-tree, factible incluso para organos grandes (ej.
+    skeleton, ~200k puntos toma segundos, no horas)."""
+    if len(points) < 2:
+        return np.zeros(len(points))
+    tree = cKDTree(points)
+    k_query = min(k + 1, len(points))  # +1: el vecino mas cercano de un punto es el mismo
+    dists, _ = tree.query(points, k=k_query)
+    if k_query > 1:
+        return dists[:, 1:].mean(axis=1)
+    return np.zeros(len(points))
+
+
 def suggested_target_points(shell_voxel_count: int, k: float = 16.0,
                              min_points: int = 300, max_points: int = 3000) -> int:
     """Escala el numero de puntos objetivo segun el tamano de la cascara,

@@ -4,7 +4,6 @@ Reconstruccion 3D de organos de rana a partir de mascaras TIFF, usando
 triangulacion de Delaunay (algoritmo Bowyer-Watson en 3D / tetraedros)
 mas un filtrado alpha-shape para reconstruir superficies no convexas.
 
-
 ## Indice
 
 - [Que se implemento](#que-se-implemento)
@@ -78,7 +77,8 @@ data/                    TIFFs + .xyz generados + manifest (no versionado, pesa 
 
 Toolchain: Windows + MSYS2 UCRT64 + CLion (mismo patron que `cg_oceano_dinamico`).
 
-1. Copia `external/glad` y `external/imgui-1.92.8` en este caso ya lo tenemos en el proyecto.
+1. Copia `external/glad` y `external/imgui-1.92.8` desde tu proyecto
+   `cg_oceano_dinamico` (o donde los tengas ya andando).
 2. Instala dependencias via pacman si no las tenes:
    ```
    pacman -S mingw-w64-ucrt-x86_64-glfw mingw-w64-ucrt-x86_64-glm
@@ -89,13 +89,25 @@ Toolchain: Windows + MSYS2 UCRT64 + CLion (mismo patron que `cg_oceano_dinamico`
 4. Para `sapo3d`, el *working directory* del run config debe apuntar a la
    raiz del repo (no a `cmake-build-debug/`), para que encuentre
    `data/manifest.tsv` y `shaders/` con rutas relativas.
-
+5. Para `sapo3d_hd`, el *working directory* debe ser la raiz del repo y
+   `data/cache/` debe existir (aunque este vacio) para que el programa
+   pueda crear los archivos binarios de cache.
+6. Para `sapo3d_adaptive` , el *working directory* debe ser la raiz del repo y
+   `data/cache/` debe existir (aunque este vacio) para que el programa
+   pueda crear los archivos binarios de cache.
 ## Ejecutables
 
 ### `delaunay_core_test`
 Consola, sin ventana. Corre 3 casos (esfera, cubo aleatorio, toro) y
 valida la propiedad de Delaunay + exporta `.obj` de cada superficie.
 Sirve para iterar sobre el algoritmo sin esperar compilar OpenGL/ImGui.
+
+### `delaunay_benchmark`
+Consola, sin ventana. Triangula nubes sinteticas de 500/1500/3000/5000
+puntos y mide `triangulate()`/`boundaryFaces()`. Imprime si se compilo
+con OpenMP y cuantos nucleos detecta. Correrlo una vez normal y otra
+con `$env:OMP_NUM_THREADS=1` (PowerShell) da los dos numeros para la
+tabla de rendimiento del informe.
 
 ### `delaunay_test`
 Visor grafico de validacion. Nube de puntos sintetica (esfera / cubo /
@@ -115,7 +127,7 @@ Igual a `sapo3d`, pero con **cache binario en disco**
 (`data/cache/<organo>_<numPuntos>.bin`): la primera vez que un organo se
 triangula, el resultado (puntos + tetraedros, con su circunesfera ya
 calculada) se guarda en ese archivo. En corridas siguientes del
-programa, aunque hayas cerrado y vuelto a abrir, se carga directo
+programa -- aunque hayas cerrado y vuelto a abrir -- se carga directo
 del cache en vez de re-correr Bowyer-Watson. Boton "Precompilar todos"
 para generar el cache de los 17 sin necesidad de activarlos uno por uno
 en pantalla. El checklist marca `[cache]` en los organos que se
@@ -124,8 +136,12 @@ cargaron del cache en vez de triangularse en esa corrida.
 Si cambias `target_points` de un organo (re-corriendo
 `extract_surface.py` con otro valor), el nombre de archivo del cache
 cambia solo (incluye la cantidad de puntos), asi que no hay que borrar
-nada a mano -- simplemente no va a existir cache para el nuevo conteo
+nada a mano, simplemente no va a existir cache para el nuevo conteo
 todavia, y se genera la primera vez que lo actives.
+
+### `sapo3d_adaptive`
+Igual a `sapo3d_hd`, pero con **alpha-shape adaptativo**: el radio de circunesfera se calcula localmente para cada tetraedro
+segun la densidad de puntos vecinos, en vez de usar un unico alpha global. Esto permite reconstruir mejor organos con zonas anchas y finas a la vez, preservando huecos menores en protuberancias finas sin tener que sacrificar detalle en el cuerpo principal. El slider de alpha ahora ajusta un factor de escala global sobre los radios locales, en vez de un alpha unico.
 
 ## Pipeline de datos (TIFF -> nube de puntos)
 
@@ -139,7 +155,7 @@ todavia, y se genera la primera vez que lo actives.
    mismo punto de referencia (el centro del volumen completo del TIFF,
    igual para los 17 archivos), no cada uno por su cuenta, asi se
    preserva la posicion relativa entre organos al combinarlos en
-   `sapo3d`.
+   `sapo3d`, `sapo3d_hd` o `sapo3d_adaptive`.
 4. Estadistica de vecino mas cercano -> alpha sugerido (`2.0x`-`3.0x` la
    distancia mediana al vecino mas cercano).
 
@@ -152,7 +168,7 @@ especificarlo a mano y actualiza solo la entrada de ESE organo en
 otros 16. Importante: si le subis los puntos a un organo despues de
 haber generado su cache en `sapo3d_hd`, el nombre del `.bin` cambia
 automaticamente (incluye la cantidad de puntos), asi que no hace falta
-borrar nada el cache viejo simplemente queda sin usarse.
+borrar nada -- el cache viejo simplemente queda sin usarse.
 
 ### Ejecucion de los scripts
 
@@ -168,26 +184,39 @@ python scripts/extract_all.py data data
 python scripts/extract_surface.py data/liverMasks.tiff 5000 data/liver_points.xyz
 
 # Solo referencia: conteo de voxeles ORIGINALES (activos y de cascara)
-# por organo, sin generar nada -- util para saber el techo real de
+# por organo, sin generar nada util, soloo para saber el techo real de
 # detalle disponible antes de subir target_points
 python scripts/report_voxel_counts.py data
 ```
 
 Para el informe, se corrio `extract_surface.py` una vez por organo
 usando como `target_points` el maximo razonable (el conteo de voxeles
-de su propia cascara, sin comprimir nada), por ejemplo:
+de su propia cascara, sin comprimir nada) para los organos chicos y
+medianos, por ejemplo:
 
 ```bash
 python scripts/extract_surface.py data/spleenMasks.tiff 1385 data/spleen_points_max.xyz
 python scripts/extract_surface.py data/liverMasks.tiff 42951 data/liver_points_max.xyz
-python scripts/extract_surface.py data/muscleMasks.tiff 822268 data/muscle_points_max.xyz
+```
+
+**Cuidado con `muscle` (822,268) y `skeleton` (198,340):** el algoritmo
+es `O(n^2)` (ver [Complejidad y optimizaciones](#complejidad-y-optimizaciones)),
+asi que a esos tamanos NO es cuestion de minutos. Calibrando con el
+benchmark real (`delaunay_benchmark`, 3000 puntos -> 0.24s en 1
+nucleo), la proyeccion para `muscle` a su maximo real son
+**~5 horas**. Para esos dos organos se uso un tope practico en vez del
+maximo real:
+
+```bash
+python scripts/extract_surface.py data/skeletonMasks.tiff 25000 data/skeleton_points_max.xyz
+python scripts/extract_surface.py data/muscleMasks.tiff 25000 data/muscle_points_max.xyz
 ```
 
 Estos `_max.xyz` (y sus caches `.bin` correspondientes, que en el caso
-de `muscle`/`skeleton` pesan varios cientos de MB) **no se versionan** son solo para comparar detalle/tiempos de forma puntual, no para el
+de `muscle`/`skeleton` pesan varios cientos de MB) **no se versionan**
+,son solo para comparar detalle/tiempos de forma puntual, no para el
 uso normal de `sapo3d`/`sapo3d_hd` (que ya vienen calibrados con un
-tope de ~3000 puntos, pensado para no romper el repositorio de GitHub
-con archivos pesados).
+tope de ~3000 puntos).
 
 ## Resultados de validacion
 
@@ -218,7 +247,7 @@ Corridas reales de `delaunay_core_test` (ver `tests/test_main.cpp`):
 El caso del toro es la prueba clave: para una superficie de genero 1
 (con un agujero), la caracteristica de Euler predice `F = 2V` caras en
 una triangulacion cerrada. Con 288 puntos eso son 576 caras esperadas,
-y `alpha=2.5` las reproduce exactas confirma que el alpha-shape
+y `alpha=2.5` las reproduce exactas, confirma que el alpha-shape
 reconstruye la topologia real (agujero incluido), no solo el casco
 convexo.
 
@@ -250,23 +279,49 @@ Impacto medido (3000 puntos, 19511 tetraedros, 78044 caras):
 | `O(caras)`, hash map | 0.005 s |
 
 **OpenMP:** la clasificacion de tetraedros dentro de cada insercion
-(el paso `O(n)` que domina el costo total) es paralelizable, cada
+(el paso `O(n)` que domina el costo total) es paralelizable -- cada
 tetraedro se evalua de forma independiente contra el punto que se esta
 insertando, sin dependencias entre ellos. Se agrego un
 `#pragma omp parallel for` sobre ese loop (activado solo cuando hay
 mas de 500 tetraedros, para no pagar el overhead de crear hilos en
-nubes chicas). Compila y corre igual sin OpenMP instalado si no esta
+nubes chicas). Compila y corre igual sin OpenMP instalado, si no esta
 disponible, CMake avisa y el codigo sigue siendo 100% funcional,
 simplemente secuencial.
 
-*(pendiente: benchmark en una maquina multi-nucleo real el entorno
-donde se desarrollo este pipeline solo tenia 1 nucleo disponible, asi
-que no se pudo medir la mejora real de OpenMP ahi. Completar esta tabla
-en el informe con los tiempos de tu maquina.)*
+Medido en la maquina de desarrollo (16 nucleos logicos, build Release,
+`delaunay_benchmark`, forzando `$env:OMP_NUM_THREADS=1` vs. sin limite):
 
-| Puntos | Tetraedros | Tiempo secuencial | Tiempo con OpenMP (N nucleos) | Speedup |
-|---|---|---|---|---|
-| 3000  | ~19500 | _completar_ | _completar_ | _completar_ |
+| Puntos | Tetraedros | 1 nucleo | 16 nucleos | Razon (16n/1n) |
+|---|---:|---:|---:|---|
+| 500    | 3,002   | 0.0271 s | 0.0598 s   | 2.21x MAS LENTO |
+| 1500   | 9,647   | 0.0959 s | 0.1974 s   | 2.06x MAS LENTO |
+| 3000   | 19,511  | 0.4158 s | 0.6481 s   | 1.56x MAS LENTO |
+| 5000   | 32,735  | 1.6680 s | 2.1833 s   | 1.31x MAS LENTO |
+| 10000  | 66,117  | 8.7580 s | 10.1975 s  | 1.16x MAS LENTO |
+| 20000  | 133,239 | 42.6774 s| 35.9358 s  | **1.19x mas rapido** |
+| 30000  | 200,213 | 96.2677 s| 84.4323 s  | **1.14x mas rapido** |
+| 60000  | 402,060 | 399.3201 s| 366.9374 s| **1.09x mas rapido** |
+
+**Hallazgo (medido, no hipotetico):** con la granularidad actual
+(una region paralela nueva por cada punto insertado), OpenMP es
+**mas lento** que la version secuencial hasta unos 10.000-20.000
+puntos, el overhead de coordinar 16 hilos miles de veces por corrida
+supera el trabajo real de cada llamada. Recien alrededor de 20.000
+puntos el paralelismo empieza a compensar. Pero el beneficio tampoco
+crece indefinidamente: el speedup **llega a un pico (~1.19x en 20.000)
+y despues se reduce** (1.14x en 30.000, 1.09x en 60.000). Esto es
+consistente con un cuello de botella de **ancho de banda de memoria**:
+con nubes grandes, el arreglo de tetraedros ya no entra en cache, y los
+16 nucleos compiten por el mismo bus de memoria al leerlo en paralelo
+el trabajo por tetraedro (comparar contra un centro+radio) es
+demasiado poco computo por byte leido como para que mas hilos seccione
+la ganancia proporcionalmente.
+
+**Conclusion practica:** los 17 organos de este proyecto usan como
+mucho ~3000 puntos (Seccion [Los 17 organos](#los-17-organos)), es
+decir, quedan del lado donde OpenMP **perjudica**. Por eso `sapo3d` y
+`sapo3d_hd` no dependen de que OpenMP ayude, el tamano tipico de
+nube usado en este proyecto no llega al punto de cruce.
 
 **CUDA:** se evaluo y se descarto para este laboratorio. Bowyer-Watson
 incremental es inherentemente secuencial entre inserciones (el estado
@@ -306,7 +361,7 @@ via `report_voxel_counts.py`:
 | **TOTAL** | **5,309,271** | **1,273,857** | **32,708** | -- |
 
 `muscle` y `skeleton` son los que mas comprimen (822K y 198K voxeles de
-cascara, bajados al mismo tope de 3000 puntos que todos), ver
+cascara, bajados al mismo tope de 3000 puntos que todos) -- ver
 limitaciones.
 
 ## Limitaciones y dificultades
@@ -335,7 +390,7 @@ limitaciones.
   optimizar esa busqueda.
 - **Formato TIFF asumido**: se asume que todas las mascaras comparten
   el mismo shape de volumen (voxeles isotropicos, sin espaciado
-  distinto por eje), valido para este dataset puntual, pero no es un
+  distinto por eje) valido para este dataset puntual, pero no es un
   supuesto general para cualquier dataset medico.
 
 ## Capturas
@@ -343,16 +398,23 @@ limitaciones.
 *(agregar en `docs/`, formato GIF corto para las demos interactivas y
 PNG para las estaticas)*
 
-- `docs/demo.png` -- captura general de `sapo3d` con varios organos
+- `docs/demo.gif` -- captura general de `sapo3d` con varios organos
   activos, para mostrar el uso general de la app.
+  ![demo](docs/demo.gif)
 - `docs/torus_alpha.gif` -- corto mostrando el toro en `delaunay_test`
   con el checkbox de alpha-shape activandose/desactivandose (se ve
   aparecer y desaparecer el agujero).
+  ![torus_alpha](docs/torus_alpha.gif)
 - `docs/liver_reconstruction.gif` -- carga del higado desde archivo,
   ajuste del slider de alpha en vivo.
+  ![liver_reconstruction](docs/liver_reconstruction.gif)
 - `docs/organ_selector.gif` -- checklist de organos en `sapo3d`
   prendiendose uno por uno.
+  ![organ_selector](docs/organ_selector.gif)
 - `docs/sapo3d_hd_cache.gif` -- corto mostrando `sapo3d_hd`: primera
   activacion de un organo (tarda, triangula), cerrar y volver a abrir
   el programa, activar el mismo organo de nuevo (instantaneo, se ve el
   tag `[cache]`), y edicion de color en vivo con el picker.
+  ![sapo3d_hd_cache](docs/sapo3d_hd_cache.gif)
+- `docs/sapo3d_adaptive.gif` -- corto mostrando `sapo3d_adaptive`: ajuste del factor de escala global sobre los radios locales de alpha-shape, preservando huecos menores en protuberancias finas sin sacrificar detalle en el cuerpo principal.
+  ![sapo3d_adaptive](docs/sapo3d_adaptive.gif)

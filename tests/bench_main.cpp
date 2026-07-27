@@ -60,7 +60,7 @@ int main() {
               << std::setw(10) << "Caras" << std::setw(18) << "triangulate(s)" << "boundaryFaces(s)\n";
     std::cout << std::string(64, '-') << "\n";
 
-    for (int n : {500, 1500, 3000, 5000,10000, 20000,30000,60000}) {
+    for (int n : {500, 1500, 3000, 5000, 10000, 20000, 30000, 60000}) {
         runCase(n);
     }
 

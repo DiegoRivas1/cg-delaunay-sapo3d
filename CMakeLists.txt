@@ -28,10 +28,10 @@ find_package(OpenMP)
 # testeable de forma aislada, no toca GLAD/ImGui/GLFW para nada).
 # ------------------------------------------------------------------
 add_library(delaunay_core STATIC
-        src/delaunay/Delaunay3D.cpp
-        src/delaunay/PointCloudIO.cpp
-        src/delaunay/ManifestIO.cpp
-        src/delaunay/TetraCache.cpp
+    src/delaunay/Delaunay3D.cpp
+    src/delaunay/PointCloudIO.cpp
+    src/delaunay/ManifestIO.cpp
+    src/delaunay/TetraCache.cpp
 )
 target_include_directories(delaunay_core PUBLIC src)
 if(OpenMP_CXX_FOUND)
@@ -62,31 +62,31 @@ target_link_libraries(delaunay_benchmark PRIVATE delaunay_core)
 # ImGui/GLAD por cada uno.
 # ------------------------------------------------------------------
 add_library(app_gfx_core STATIC
-        src/core/Application.cpp
-        src/core/Shader.cpp
-        src/core/MeshBuilder.cpp
-        ${GLAD_DIR}/src/glad.c
-        ${IMGUI_DIR}/imgui.cpp
-        ${IMGUI_DIR}/imgui_draw.cpp
-        ${IMGUI_DIR}/imgui_tables.cpp
-        ${IMGUI_DIR}/imgui_widgets.cpp
-        ${IMGUI_DIR}/imgui_demo.cpp
-        ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
-        ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+    src/core/Application.cpp
+    src/core/Shader.cpp
+    src/core/MeshBuilder.cpp
+    ${GLAD_DIR}/src/glad.c
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
+    ${IMGUI_DIR}/imgui_demo.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 target_include_directories(app_gfx_core PUBLIC
-        ${GLAD_DIR}/include
-        ${IMGUI_DIR}
-        ${IMGUI_DIR}/backends
-        src
+    ${GLAD_DIR}/include
+    ${IMGUI_DIR}
+    ${IMGUI_DIR}/backends
+    src
 )
 target_link_libraries(app_gfx_core PUBLIC
-        delaunay_core
-        glm::glm
-        glfw3
-        opengl32
-        gdi32
-        glu32
+    delaunay_core
+    glm::glm
+    glfw3
+    opengl32
+    gdi32
+    glu32
 )
 
 # ------------------------------------------------------------------
@@ -97,7 +97,7 @@ add_executable(delaunay_test apps/synthetic_test/main.cpp)
 target_link_libraries(delaunay_test PRIVATE app_gfx_core)
 
 add_custom_command(TARGET delaunay_test POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_LIST_DIR}/shaders" "$<TARGET_FILE_DIR:delaunay_test>/shaders"
 )
 
@@ -110,7 +110,7 @@ add_executable(sapo3d apps/sapo3d/main.cpp)
 target_link_libraries(sapo3d PRIVATE app_gfx_core)
 
 add_custom_command(TARGET sapo3d POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_LIST_DIR}/shaders" "$<TARGET_FILE_DIR:sapo3d>/shaders"
 )
 
@@ -125,6 +125,20 @@ add_executable(sapo3d_hd apps/sapo3d_hd/main.cpp)
 target_link_libraries(sapo3d_hd PRIVATE app_gfx_core)
 
 add_custom_command(TARGET sapo3d_hd POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_LIST_DIR}/shaders" "$<TARGET_FILE_DIR:sapo3d_hd>/shaders"
+)
+
+# ------------------------------------------------------------------
+# Ejecutable: reconstruccion con alpha ADAPTATIVO (por tetraedro, segun
+# densidad local de sus 4 vertices) en vez de un unico alpha global por
+# organo. Reusa el MISMO cache binario que sapo3d_hd -- no re-triangula
+# nada que ya este calculado, solo cambia el criterio de filtrado final.
+# ------------------------------------------------------------------
+add_executable(sapo3d_adaptive apps/sapo3d_adaptive/main.cpp)
+target_link_libraries(sapo3d_adaptive PRIVATE app_gfx_core)
+
+add_custom_command(TARGET sapo3d_adaptive POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_LIST_DIR}/shaders" "$<TARGET_FILE_DIR:sapo3d_adaptive>/shaders"
 )

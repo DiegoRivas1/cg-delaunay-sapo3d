@@ -7,7 +7,7 @@ import json
 import numpy as np
 import tifffile as tiff
 
-from tiff_utils import extract_shell, voxel_grid_downsample, nearest_neighbor_stats, suggested_target_points
+from tiff_utils import extract_shell, voxel_grid_downsample, nearest_neighbor_stats, per_point_local_scale, suggested_target_points
 
 
 def organ_name_from_filename(filename: str) -> str:
@@ -43,12 +43,16 @@ def extract_organ(tiff_path: str, out_dir: str, target_points: int = None) -> di
     points = voxel_grid_downsample(points, target_points)
     median_nn, mean_nn, min_nn, max_nn = nearest_neighbor_stats(points)
     alpha_auto = 2.5 * median_nn
+    local_scale = per_point_local_scale(points)
 
     out_file = os.path.join(out_dir, f"{name}_points.xyz")
     with open(out_file, "w") as f:
         f.write(f"# {tiff_path} -> {len(points)} puntos, alpha_auto={alpha_auto:.3f}\n")
-        for p in points:
-            f.write(f"{p[0]:.4f} {p[1]:.4f} {p[2]:.4f}\n")
+        f.write("# columnas: x y z local_scale (4ta col = densidad local, "
+                "para alpha adaptativo; version vieja sin 4ta col sigue "
+                "siendo compatible)\n")
+        for p, ls in zip(points, local_scale):
+            f.write(f"{p[0]:.4f} {p[1]:.4f} {p[2]:.4f} {ls:.4f}\n")
 
     return {
         "organ": name,

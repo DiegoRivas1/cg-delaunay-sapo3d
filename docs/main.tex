@@ -52,7 +52,7 @@
     \textbf{Reconstrucción Tridimensional de Órganos de Rana} \\
     \large Triangulación de Delaunay (Bowyer--Watson 3D) con Filtrado Alpha-Shape \\
     \vspace{0.3cm}
-    \normalsize Laboratorio de Computación Gráfica --- UNSA-EPCC
+    \normalsize Laboratorio de Computación Gráfica UNSA-EPCC
 }
 \author{
     Rivas Huanca Diego Raul \\
@@ -84,7 +84,6 @@ OpenMP).
 \end{abstract}
 
 \newpage
-
 \tableofcontents
 \newpage
 
@@ -333,7 +332,7 @@ mano, y el visor final del sapo completo (con y sin caché en disco).
 
 La interfaz \texttt{IDelaunayStrategy} desacopla el resto del sistema
 de la implementación concreta del algoritmo de triangulación,
-permitiendo -- sin modificar el código cliente -- intercambiar la
+permitiendo sin modificar el código cliente -- intercambiar la
 estrategia de reconstrucción (por ejemplo, para comparar variantes del
 algoritmo o futuras optimizaciones):
 
@@ -414,7 +413,7 @@ La extracción de caras de frontera (\texttt{boundaryFaces}) identifica,
 entre todas las caras de los tetraedros restantes, las que pertenecen a
 un único tetraedro (las caras internas, compartidas por dos, se
 descartan). Este paso se optimizó de $O(F^2)$ a $O(F)$ amortizado
-mediante una tabla hash, ver Sección~\ref{sec:complejidad}.
+mediante una tabla hash -- ver Sección~\ref{sec:complejidad}.
 
 \subsection{Pipeline de datos}
 
@@ -470,7 +469,7 @@ a mano para cada uno.
 Se aplicó la heurística sobre el bazo (574 puntos, $\alpha_{auto}
 \approx 2.5$) y el hígado (3039 puntos, $\alpha_{auto} \approx 9.6$),
 confirmando visualmente formas reconocibles en ambos casos, con huecos
-menores en zonas de baja densidad de puntos (extremidades finas)
+menores en zonas de baja densidad de puntos (extremidades finas) --
 documentado como limitación en la Sección~\ref{sec:limitaciones}.
 
 % ============================================================
@@ -625,18 +624,47 @@ for (long ti = 0; ti < numTets; ++ti) {
 
 \begin{table}[H]
 \centering
-\caption{Tiempos de triangulación secuencial vs. paralelo (OpenMP).}
-\begin{tabular}{@{}lrrr@{}}
+\caption{Tiempos de triangulación medidos en la máquina de desarrollo (16 núcleos lógicos, build Release), forzando 1 núcleo vs. usando los 16 disponibles.}
+\begin{tabular}{@{}lrrrr@{}}
 \toprule
-\textbf{Puntos} & \textbf{Tetraedros} & \textbf{Secuencial} & \textbf{OpenMP (\underline{\hspace{1cm}} núcleos)} \\
+\textbf{Puntos} & \textbf{Tetraedros} & \textbf{1 núcleo} & \textbf{16 núcleos} & \textbf{Razón (16n / 1n)} \\
 \midrule
-3000 & \textasciitilde19{,}500 & \underline{\hspace{1.5cm}} s & \underline{\hspace{1.5cm}} s \\
+500  & 3,002  & 0.0307 s & 0.0597 s & 1.94$\times$ más lento \\
+1500 & 9,647  & 0.1027 s & 0.2055 s & 2.00$\times$ más lento \\
+3000 & 19,511 & 0.3765 s & 0.5503 s & 1.46$\times$ más lento \\
+5000 & 32,735 & 1.4733 s & 1.7729 s & 1.20$\times$ más lento \\
 \bottomrule
 \end{tabular}
 \end{table}
-\emph{Nota: Tabla con mediciones en la máquina de
-desarrollo (multi-núcleo); el entorno usado durante el desarrollo
-inicial del algoritmo solo contaba con un núcleo disponible.}
+
+\textbf{Hallazgo:} contrario a la hipótesis inicial, paralelizar con
+\texttt{\#pragma omp parallel for} resultó \emph{consistentemente más
+lento} que la versión secuencial, en las 4 nubes de puntos evaluadas
+sobre hardware real de 16 núcleos lógicos. La causa raíz es de
+granularidad: la región paralela se abre y cierra \textbf{una vez por
+cada punto insertado} (miles de veces por corrida), y el trabajo real
+dentro de cada apertura (comparar un punto contra los tetraedros
+vigentes) es demasiado pequeño para amortizar el costo de coordinar 16
+hilos en cada una. El overhead de sincronización domina sobre la
+ganancia de paralelismo.
+
+Un dato a favor de la hipótesis original: la desventaja se reduce a
+medida que crece la nube de puntos (de $2.00\times$ más lento en 1500
+puntos a $1.20\times$ en 5000), consistente con un overhead
+aproximadamente fijo por llamada que se diluye a medida que aumenta el
+trabajo real por llamada. Esto sugiere que, en nubes bastante más
+grandes que las usadas en este proyecto, la paralelización \emph{podría}
+llegar a compensar, pero confirmar esto exigiría una reestructuración
+distinta (mantener un único equipo de hilos persistente para toda la
+llamada a \texttt{triangulate()}, usando \texttt{\#pragma omp parallel}
+una sola vez con secciones \texttt{single}/\texttt{for} internas, en
+vez de abrir una región nueva por punto), que no se implementó por
+alcance y por no poder validarse con certeza en el entorno de
+desarrollo. Se documenta como limitación medida y como línea de trabajo
+futuro concreta (Sección~\ref{sec:limitaciones}). El código actual con
+OpenMP es \textbf{funcionalmente correcto} (produce resultados
+idénticos a la versión secuencial en todos los casos de validación),
+solo no resultó beneficioso con esta granularidad.
 
 Se evaluó el uso de CUDA para acelerar aún más la triangulación, y se
 descartó: Bowyer--Watson incremental es inherentemente secuencial
@@ -696,7 +724,7 @@ limitaciones que se detallan a continuación.
     \item \textbf{Sub-muestreo con tope fijo de puntos}: \texttt{muscle}
     (822K voxeles de cáscara) y \texttt{skeleton} (198K) se comprimen
     al mismo techo de $\sim$3000 puntos que órganos mucho más chicos
-    como el bazo (1385) esto implica menos detalle relativo en las
+    como el bazo (1385) -- esto implica menos detalle relativo en las
     estructuras más grandes y complejas del espécimen.
     \item \textbf{Complejidad algorítmica sin aceleración espacial}: la
     implementación usa búsqueda lineal sobre los tetraedros existentes
@@ -706,11 +734,20 @@ limitaciones que se detallan a continuación.
     (p.~ej. \emph{walk} guiado por localidad, o un \emph{kd-tree}).
     \item \textbf{Supuesto de voxel isotrópico}: se asume que todas las
     máscaras comparten el mismo \emph{shape} de volumen y que los
-    voxeles son isotrópicos (mismo espaciado en los 3 ejes) válido
+    voxeles son isotrópicos (mismo espaciado en los 3 ejes) -- válido
     para este conjunto de datos puntual, pero no es un supuesto general
     para cualquier dataset médico (p.~ej. tomografías con distinto
     espaciado entre slices y dentro de cada slice).
 \end{itemize}
+
+%
+\section{Repsositorio}
+Link del codigo:
+\url{https://github.com/DiegoRivas1/cg-delaunay-sapo3d.git}
+
+
+%
+
 
 % ============================================================
 \section{Conclusiones y trabajo futuro}
@@ -733,11 +770,18 @@ limitaciones que se detallan a continuación.
     por grilla + centrado compartido) permitió procesar los 17 órganos
     de forma automática y consistente, preservando su posición relativa
     dentro del espécimen.
-    \item Las optimizaciones de rendimiento (tabla hash para
-    \texttt{boundaryFaces}, caché binario en disco, paralelización con
-    OpenMP) redujeron significativamente el tiempo de uso interactivo
-    del sistema, sin alterar la correctud de los resultados (verificado
-    comparando resultados antes/después de cada optimización).
+    \item Las optimizaciones de rendimiento efectivamente exitosas
+    (tabla hash para \texttt{boundaryFaces}: de 2.20 s a 0.005 s; caché
+    binario en disco para no re-triangular entre corridas) redujeron
+    significativamente el tiempo de uso interactivo del sistema, sin
+    alterar la correctud de los resultados (verificado comparando
+    resultados antes/después de cada optimización). La paralelización
+    con OpenMP, en cambio, se midió rigurosamente (build Release, 1 vs.
+    16 núcleos, 4 tamaños de nube) y resultó \textbf{consistentemente
+    más lenta} que la versión secuencial con la granularidad actual --
+    un hallazgo negativo real, cuya causa raíz (demasiadas regiones
+    paralelas pequeñas) se identificó y documentó junto con la
+    reestructuración correcta pendiente (Sección~\ref{sec:complejidad}).
 \end{itemize}
 
 \subsection*{Trabajo futuro}
@@ -750,6 +794,16 @@ limitaciones que se detallan a continuación.
     para bajar la complejidad práctica de la inserción de puntos,
     permitiendo subir el tope de puntos por órgano sin degradar el
     tiempo de respuesta interactivo.
+    \item Reestructurar la paralelización con OpenMP para usar un único
+    equipo de hilos persistente durante toda la llamada a
+    \texttt{triangulate()} (una región \texttt{\#pragma omp parallel}
+    con secciones \texttt{single}/\texttt{for} internas), en vez de
+    abrir una región nueva por cada punto insertado -- la medición
+    actual (Sección~\ref{sec:complejidad}) muestra que la version actual
+    es consistentemente más lenta que la secuencial, con el overhead
+    diluyéndose a medida que crece la nube de puntos, lo que sugiere que
+    una implementación con menos overhead de sincronización sí podría
+    aportar una mejora real.
     \item Suavizado de malla (p.~ej. Laplacian smoothing) como
     posproceso, para reducir el aspecto ``faceteado'' de las
     superficies reconstruidas con pocos puntos.
