@@ -215,9 +215,58 @@ python scripts/extract_surface.py data/muscleMasks.tiff 25000 data/muscle_points
 Estos `_max.xyz` (y sus caches `.bin` correspondientes, que en el caso
 de `muscle`/`skeleton` pesan varios cientos de MB) **no se versionan**
 ,son solo para comparar detalle/tiempos de forma puntual, no para el
-uso normal de `sapo3d`/`sapo3d_hd` (que ya vienen calibrados con un
-tope de ~3000 puntos).
+uso normal de `sapo3d`/`sapo3d_hd`/ `sapo3d_adaptive` (que ya vienen calibrados con un
+tope de ~3000 puntos que son extract_all.py).
 
+Si quisieramos usar los maximos reales, 
+habria que correr `extract_surface.py` 
+con esos conteos y esperar los unicos que demoran para latraingulacion son muscle y skeleton,
+para que se regenere el cache de  puntos la primera vez que se active cada organo en `sapo3d_hd`. `sapo3d_adaptive` tambien soporta esos conteos, pero el tiempo de triangulacion sigue siendo el mismo (Bowyer-Watson incremental es O(n^2) sin optimizaciones de busqueda).
+
+Automaticamente, los caches `.bin` se nombran con la cantidad de puntos, asi que no hay que borrar nada a mano: si cambias `target_points`, el cache viejo queda sin usarse y se genera uno nuevo la primera vez que actives ese organo. Si quieiseramos usar caches viejos solo se especifica con el extract_surface.py el mismo target_points que se uso para generarlos.
+
+```bash
+python scripts/extract_surface.py data/bloodMasks.tiff 26035 data/blood_points_max.xyz
+python scripts/extract_surface.py data/brainMasks.tiff 5374 data/brain_points_max.xyz
+python scripts/extract_surface.py data/duodenumMasks.tiff 12182 data/duodenum_points_max.xyz
+python scripts/extract_surface.py data/eyeMasks.tiff 9024 data/eye_points_max.xyz
+python scripts/extract_surface.py data/eyeRetnaMasks.tiff 13317 data/eyeRetna_points_max.xyz
+python scripts/extract_surface.py data/eyeWhiteMasks.tiff 5165 data/eyeWhite_points_max.xyz
+python scripts/extract_surface.py data/heartMasks.tiff 8648 data/heart_points_max.xyz
+python scripts/extract_surface.py data/ileumMasks.tiff 9874 data/ileum_points_max.xyz
+python scripts/extract_surface.py data/kidneyMasks.tiff 12199 data/kidney_points_max.xyz
+python scripts/extract_surface.py data/lIntestineMasks.tiff 9634 data/lIntestine_points_max.xyz
+python scripts/extract_surface.py data/liverMasks.tiff 42951 data/liver_points_max.xyz
+python scripts/extract_surface.py data/lungMasks.tiff 13210 data/lung_points_max.xyz
+python scripts/extract_surface.py data/muscleMasks.tiff 822268 data/muscle_points_max.xyz
+python scripts/extract_surface.py data/nerveMasks.tiff 16649 data/nerve_points_max.xyz
+python scripts/extract_surface.py data/skeletonMasks.tiff 198340 data/skeleton_points_max.xyz
+python scripts/extract_surface.py data/spleenMasks.tiff 1385 data/spleen_points_max.xyz
+python scripts/extract_surface.py data/stomachMasks.tiff 67602 data/stomach_points_max.xyz
+```
+
+Puede ser tambien, el nombre de los archivos de salida`.xyz` no tiene que ser `_max`, puede ser cualquier nombre, lo importante es que el `target_points` sea el mismo que se uso para generar el cache si queremos usarlo despues en `sapo3d_hd`, `sapo3d_adaptive`, `sapo3d`.
+
+Esto modifica data/manifest.tsv para que el target_points de cada organo coincida con el que se uso en extract_surface.py, asi que si se cambia el target_points de un organo, el cache viejo queda sin usarse y se genera uno nuevo la primera vez que se active ese organo.
+```bash
+python scripts/extract_surface.py data/bloodMasks.tiff 5000 data/blood_points.xyz
+python scripts/extract_surface.py data/brainMasks.tiff 2000 data/brain_points.xyz
+python scripts/extract_surface.py data/duodenumMasks.tiff 3000 data/duodenum_points.xyz
+python scripts/extract_surface.py data/eyeMasks.tiff 3000 data/eye_points.xyz
+python scripts/extract_surface.py data/eyeRetnaMasks.tiff 3000 data/eyeRetna_points.xyz
+python scripts/extract_surface.py data/eyeWhiteMasks.tiff 2000 data/eyeWhite_points.xyz
+python scripts/extract_surface.py data/heartMasks.tiff 3000 data/heart_points.xyz
+python scripts/extract_surface.py data/ileumMasks.tiff 3000 data/ileum_points.xyz
+python scripts/extract_surface.py data/kidneyMasks.tiff 3000 data/kidney_points.xyz
+python scripts/extract_surface.py data/lIntestineMasks.tiff 3000 data/lIntestine_points.xyz
+python scripts/extract_surface.py data/liverMasks.tiff 10000 data/liver_points.xyz
+python scripts/extract_surface.py data/lungMasks.tiff 3000 data/lung_points.xyz
+python scripts/extract_surface.py data/muscleMasks.tiff 50000 data/muscle_points.xyz
+python scripts/extract_surface.py data/nerveMasks.tiff 5000 data/nerve_points.xyz
+python scripts/extract_surface.py data/skeletonMasks.tiff 20000 data/skeleton_points.xyz
+python scripts/extract_surface.py data/spleenMasks.tiff 500 data/spleen_points.xyz
+python scripts/extract_surface.py data/stomachMasks.tiff 15000 data/stomach_points.xyz
+```
 ## Resultados de validacion
 
 Corridas reales de `delaunay_core_test` (ver `tests/test_main.cpp`):
