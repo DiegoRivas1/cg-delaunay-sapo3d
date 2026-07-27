@@ -75,16 +75,15 @@ data/                    TIFFs + .xyz generados + manifest (no versionado, pesa 
 
 ## Setup y compilacion
 
-Toolchain: Windows + MSYS2 UCRT64 + CLion (mismo patron que `cg_oceano_dinamico`).
+Toolchain: Windows + MSYS2 UCRT64 + CLion.
 
-1. Copia `external/glad` y `external/imgui-1.92.8` desde tu proyecto
-   `cg_oceano_dinamico` (o donde los tengas ya andando).
+1. Copiamos `external/glad` y `external/imgui-1.92.8`, nosostors ya lo t enemos en el repositorio 
 2. Instala dependencias via pacman si no las tenes:
    ```
    pacman -S mingw-w64-ucrt-x86_64-glfw mingw-w64-ucrt-x86_64-glm
    ```
-3. Reconfigura CMake en CLion y compila. Genera 4 targets:
-   `delaunay_core_test`, `delaunay_test`, `sapo3d` (y la libreria interna
+3. Reconfigura CMake en CLion y compila. Genera 6 targets:
+   `delaunay_core_test`, `delaunay_test`, `sapo3d`, `sapo3d_hd`, `sapo3d_adaptive` (y la libreria interna
    `app_gfx_core`).
 4. Para `sapo3d`, el *working directory* del run config debe apuntar a la
    raiz del repo (no a `cmake-build-debug/`), para que encuentre
@@ -95,6 +94,11 @@ Toolchain: Windows + MSYS2 UCRT64 + CLion (mismo patron que `cg_oceano_dinamico`
 6. Para `sapo3d_adaptive` , el *working directory* debe ser la raiz del repo y
    `data/cache/` debe existir (aunque este vacio) para que el programa
    pueda crear los archivos binarios de cache.
+7. Para `delaunay_test`, el *working directory* debe ser la raiz del repo para que encuentre `data/` y `shaders/`.
+
+Ejemplo de configuracion de working directory en CLion (Windows):
+![run_configuration](docs/run_configuration.png)
+![working_directory](docs/directory_ejemplo.png)
 ## Ejecutables
 
 ### `delaunay_core_test`
