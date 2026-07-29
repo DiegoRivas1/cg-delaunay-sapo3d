@@ -418,7 +418,26 @@ cascara, bajados al mismo tope de 3000 puntos que todos) -- ver
 limitaciones.
 
 ## Limitaciones y dificultades
-
+- **Aceleración espacial (kd-tree/grilla), intentada y descartada por
+  ahora**: se probaron dos variantes de grilla espacial para reemplazar
+  el escaneo `O(n)` de tetraedros por insercion (código en
+  `src/delaunay/Delaunay3DGrid.*`, no enganchado a ningún ejecutable).
+  Ambas fallaron con nubes de puntos grandes por la misma causa de
+  fondo, manifestada distinto: los tetraedros "de transición" (los
+  primeros que se forman, antes de que la nube tenga densidad local
+  suficiente) tienen circunesferas grandes en relación al tamaño de
+  celda calibrado para la densidad final, eso infla el costo de
+  consulta (primer intento, cota `Rmax` monótona) o el costo de
+  inserción (segundo intento, inserción "gorda" en todas las celdas que
+  toca cada circunesfera). Ambas variantes dieron resultados
+  **idénticos y correctos** en los casos chicos (esfera, toro, hasta
+  ~500 puntos), confirmando que la lógica es sana, pero no escalan. La
+  solución correcta (la que usan CGAL/Qhull) es adyacencia entre
+  tetraedros + *walk* con punto de partida ("hint"), no una estructura
+  espacial calibrada a una densidad global, ver en
+  [Lecturas recomendadas](#lecturas-recomendadas-aceleración-espacial-trabajo-futuro).
+  Queda como trabajo futuro con referencias concretas para implementarlo
+  bien, en vez de forzar una solución a medio probar.
 - **Alpha-shape de radio unico por organo**: un solo valor de alpha no
   siempre reconstruye bien zonas anchas y finas del mismo organo a la
   vez. En el bazo y el higado aparecen huecos menores en las
@@ -446,6 +465,8 @@ limitaciones.
   distinto por eje) valido para este dataset puntual, pero no es un
   supuesto general para cualquier dataset medico.
 
+
+
 ## Capturas
 
 *(agregar en `docs/`, formato GIF corto para las demos interactivas y
@@ -471,3 +492,50 @@ PNG para las estaticas)*
   ![sapo3d_hd_cache](docs/sapo3d_hd_cache.gif)
 - `docs/sapo3d_adaptive.gif` -- corto mostrando `sapo3d_adaptive`: ajuste del factor de escala global sobre los radios locales de alpha-shape, preservando huecos menores en protuberancias finas sin sacrificar detalle en el cuerpo principal.
   ![sapo3d_adaptive](docs/sapo3d_adaptive.gif)
+
+## Lecturas recomendadas (aceleración espacial, trabajo futuro)
+
+Durante la exploración del kd-tree/grilla espacial (ver limitaciones) se
+revisó bibliografía sobre cómo aceleran la triangulación de Delaunay las
+implementaciones de producción. Quedan como referencia para retomar el
+trabajo futuro:
+
+1. **Spatial Sorting (CGAL User Manual)**: Delage, C. y Devillers, O.
+   Explica la técnica que realmente usa CGAL: no una estructura espacial
+   dedicada, sino **ordenar los puntos de entrada** a lo largo de una
+   curva de Hilbert antes de insertarlos (para que puntos consecutivos
+   en la secuencia estén cerca en el espacio), combinado con un "hint"
+   (la última cara/celda tocada) como punto de partida para el *walk*
+   de localización. Trae un benchmark real: la misma triangulación de
+   10,000 puntos pasa de 6.33s (sin ordenar) a 0.022s (spatial sort +
+   hint) ~280x mas rapido. Requiere que la estructura de datos mantenga
+   adyacencia entre tetraedros (no solo ordenar los puntos alcanza).
+   `doc.cgal.org/5.3.1/Spatial_sorting/index.html`
+
+2. **Improved Incremental Randomized Delaunay Triangulation**: Devillers, O.
+   El paper detrás de la técnica de "Delaunay tree" / walk con historial
+   que usan CGAL y librerías similares para la localización de puntos
+   sin escanear toda la triangulación. Es la referencia técnica más
+   directa para implementar la version "correcta" (adyacencia + walk)
+   que se identificó como la solución apropiada, en vez de una grilla
+   espacial (que se probó y no dio resultado, ver las limitaciones).
+
+3. **Three-dimensional Delaunay triangulations**: (notas de curso, Purdue
+   CS 531) cubre BRIO (*Biased Randomized Insertion Order*) y el
+   ordenamiento de puntos vía kd-tree/octree/curvas de llenado de
+   espacio combinado con *walking point location*, con nivel de detalle
+   más introductorio que los papers de investigación. Buen punto de
+   entrada antes de Devillers.
+   `cs.purdue.edu/homes/tamaldey/course/531/Delaunay(3D).pdf`
+
+4. **Efficient Delaunay Tessellation through K-D Tree Decomposition**:
+   (Morozov, D. y Peterka, T., SC16) a diferencia de los anteriores,
+   este resuelve un problema distinto: distribuir una triangulación
+   entre miles de procesos MPI en un cluster, usando k-d tree para
+   balancear la cantidad de puntos por proceso (no para acelerar la
+   localización de puntos dentro de un único proceso serial). Util para
+   entender la diferencia entre "acelerar el algoritmo serial" (lo que
+   necesitamos acá) y "paralelizarlo entre múltiples máquinas" (otro
+   problema, mucho mayor escala).
+
+

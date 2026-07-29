@@ -11,7 +11,7 @@ kidney	kidney_points_max.xyz	12199	2.5000	2.0000	3.0000
 lIntestine	lIntestine_points_max.xyz	9634	2.5000	2.0000	3.0000
 liver	liver_points_max.xyz	42951	2.5000	2.0000	3.0000
 lung	lung_points_max.xyz	13210	2.5000	2.0000	3.0000
-muscle	muscle_points_max.xyz	96028	5.0000	4.0000	6.0000
+muscle	muscle_points_max.xyz	309389	2.5000	2.0000	3.0000
 nerve	nerve_points_max.xyz	16649	2.5000	2.0000	3.0000
 skeleton	skeleton_points_max.xyz	198340	2.5000	2.0000	3.0000
 spleen	spleen_points_max.xyz	1385	2.5000	2.0000	3.0000
